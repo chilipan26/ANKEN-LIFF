@@ -1,0 +1,678 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>案件確認LIFF</title>
+    <script src="https://d.line-scdn.net/liff/web/sdk/liff.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f5f5f5;
+            overflow: hidden;
+        }
+
+        .container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+
+        /* ヘッダー */
+        .header {
+            background: linear-gradient(135deg, #4361EE 0%, #3A52D5 100%);
+            color: white;
+            padding: 12px 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .header-left {
+            font-weight: bold;
+        }
+
+        .header-center {
+            flex: 1;
+            margin: 0 12px;
+        }
+
+        .header-center select {
+            width: 100%;
+            padding: 8px 12px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+
+        .header-right {
+            display: flex;
+            gap: 8px;
+        }
+
+        .header-right button {
+            background: rgba(255,255,255,0.2);
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        /* メインコンテンツ */
+        .content {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        /* 左パネル - 原文 */
+        .left-panel {
+            width: 50%;
+            border-right: 2px solid #ddd;
+            overflow-y: auto;
+            padding: 16px;
+            background: white;
+        }
+
+        .left-panel h3 {
+            color: #4361EE;
+            margin-bottom: 12px;
+            font-size: 14px;
+        }
+
+        .raw-text {
+            background: #f9f9f9;
+            padding: 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            line-height: 1.6;
+            white-space: pre-wrap;
+            word-break: break-word;
+            color: #333;
+            max-height: calc(100vh - 100px);
+            overflow-y: auto;
+        }
+
+        /* 右パネル - 編集 */
+        .right-panel {
+            width: 50%;
+            overflow-y: auto;
+            padding: 16px;
+            background: #fafafa;
+        }
+
+        .right-panel h3 {
+            color: #4361EE;
+            margin-bottom: 12px;
+            font-size: 14px;
+        }
+
+        /* 案件基本情報 */
+        .form-section {
+            background: white;
+            padding: 12px;
+            border-radius: 6px;
+            margin-bottom: 12px;
+        }
+
+        .form-item {
+            margin-bottom: 12px;
+        }
+
+        .form-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .form-label {
+            font-weight: bold;
+            font-size: 12px;
+            color: #333;
+            margin-bottom: 4px;
+            display: block;
+        }
+
+        .form-value {
+            font-size: 12px;
+            color: #555;
+            padding: 8px;
+            background: #f5f5f5;
+            border-radius: 4px;
+            margin-bottom: 4px;
+            min-height: 24px;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 12px;
+            font-family: inherit;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: #4361EE;
+            box-shadow: 0 0 4px rgba(67, 97, 238, 0.3);
+        }
+
+        /* アコーディオン */
+        .accordion {
+            margin-bottom: 8px;
+        }
+
+        .accordion-header {
+            background: white;
+            border: 1px solid #ddd;
+            padding: 12px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-radius: 6px;
+            user-select: none;
+            font-weight: bold;
+            font-size: 13px;
+            color: #333;
+            transition: all 0.2s;
+        }
+
+        .accordion-header:active {
+            background: #f0f0f0;
+        }
+
+        .accordion-icon {
+            display: inline-block;
+            transition: transform 0.2s;
+            font-size: 16px;
+        }
+
+        .accordion-header.open .accordion-icon {
+            transform: rotate(180deg);
+        }
+
+        .accordion-content {
+            display: none;
+            background: white;
+            border: 1px solid #ddd;
+            border-top: none;
+            padding: 12px;
+            border-radius: 0 0 6px 6px;
+            margin-bottom: 8px;
+        }
+
+        .accordion-content.open {
+            display: block;
+        }
+
+        .accordion-content.empty {
+            color: #999;
+            font-size: 12px;
+            padding: 16px;
+            text-align: center;
+        }
+
+        /* チェックボックス */
+        .checkbox-section {
+            background: white;
+            padding: 12px;
+            border-radius: 6px;
+            margin: 12px 0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .checkbox-section input {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+
+        .checkbox-section label {
+            font-size: 12px;
+            cursor: pointer;
+            flex: 1;
+        }
+
+        /* ボタン */
+        .button-section {
+            display: flex;
+            gap: 8px;
+            margin-top: 12px;
+            padding: 0 16px 16px 16px;
+        }
+
+        .button-section button {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .button-save {
+            background: #4361EE;
+            color: white;
+        }
+
+        .button-save:active {
+            background: #3A52D5;
+        }
+
+        .button-next {
+            background: #e0e0e0;
+            color: #333;
+        }
+
+        .button-next:active {
+            background: #d0d0d0;
+        }
+
+        /* ローディング */
+        .loading {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 20px 40px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            display: none;
+            z-index: 1000;
+        }
+
+        .loading.show {
+            display: block;
+        }
+
+        /* メッセージ */
+        .message {
+            position: fixed;
+            top: 60px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #4CAF50;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 6px;
+            display: none;
+            z-index: 999;
+        }
+
+        .message.show {
+            display: block;
+        }
+
+        .message.error {
+            background: #f44336;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- ヘッダー -->
+        <div class="header">
+            <div class="header-left">
+                未処理 <span id="caseCount">0/0</span>
+            </div>
+            <div class="header-center">
+                <select id="caseSelect" onchange="handleCaseChange()">
+                    <option value="">案件を選択...</option>
+                </select>
+            </div>
+            <div class="header-right">
+                <button onclick="prevCase()">◀ 前へ</button>
+                <button onclick="nextCase()">次へ ▶</button>
+            </div>
+        </div>
+
+        <!-- メインコンテンツ -->
+        <div class="content">
+            <!-- 左パネル: 原文 -->
+            <div class="left-panel">
+                <h3>【原文】</h3>
+                <div class="raw-text" id="rawText">案件を選択してください</div>
+            </div>
+
+            <!-- 右パネル: 編集 -->
+            <div class="right-panel">
+                <h3>【ポジション別編集】</h3>
+
+                <!-- 案件基本情報 -->
+                <div class="form-section" id="basicInfo">
+                    <div class="form-item">
+                        <label class="form-label">案件名</label>
+                        <div class="form-value" id="caseNameDisplay"></div>
+                        <input type="text" id="caseName" class="form-input" placeholder="修正・追加">
+                    </div>
+                    <div class="form-item">
+                        <label class="form-label">クライアント</label>
+                        <div class="form-value" id="clientDisplay"></div>
+                        <input type="text" id="client" class="form-input" placeholder="修正・追加">
+                    </div>
+                    <div class="form-item">
+                        <label class="form-label">日付</label>
+                        <div class="form-value" id="dateDisplay"></div>
+                        <input type="text" id="date" class="form-input" placeholder="修正・追加">
+                    </div>
+                    <div class="form-item">
+                        <label class="form-label">稼働時間</label>
+                        <div class="form-value" id="timeDisplay"></div>
+                        <input type="text" id="time" class="form-input" placeholder="修正・追加">
+                    </div>
+                </div>
+
+                <!-- ポジション別アコーディオン -->
+                <div id="positionAccordions"></div>
+
+                <!-- チェックボックス -->
+                <div class="checkbox-section">
+                    <input type="checkbox" id="registerToCase" checked>
+                    <label for="registerToCase">この案件を案件情報に登録する</label>
+                </div>
+
+                <!-- ボタン -->
+                <div class="button-section">
+                    <button class="button-save" onclick="saveData()">保存して確認済に</button>
+                    <button class="button-next" onclick="nextCase()">次へ ▶</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ローディング -->
+    <div class="loading" id="loading">処理中...</div>
+
+    <!-- メッセージ -->
+    <div class="message" id="message"></div>
+
+    <script>
+        let casesData = [];
+        let currentIndex = 0;
+        const GAS_URL = 'https://script.google.com/macros/s/AKfycbwkjodARacaYxm2bST8purib_WcqE9csNCPjwovdgonksWgEHDnETsEHuYx9VRoZvtB9A/exec';
+
+        // LIFF 初期化
+        async function initLiff() {
+            try {
+                await liff.init({ liffId: '2010162762-VhyEkMPy' });
+                if (liff.isLoggedIn()) {
+                    loadCasesData();
+                } else {
+                    liff.login();
+                }
+            } catch (error) {
+                console.error('LIFF init error:', error);
+                showMessage('LIFF初期化エラー: ' + error.message, true);
+            }
+        }
+
+        // GAS からデータ取得
+        async function loadCasesData() {
+            try {
+                showLoading(true);
+                const response = await fetch(GAS_URL + '?action=getUnconfirmedCases');
+                const data = await response.json();
+                
+                casesData = data.cases || [];
+                currentIndex = 0;
+
+                if (casesData.length === 0) {
+                    showMessage('未確認案件がありません', false);
+                    return;
+                }
+
+                populateCaseSelect();
+                displayCase(0);
+                showLoading(false);
+            } catch (error) {
+                console.error('Load error:', error);
+                showMessage('データ読み込みエラー: ' + error.message, true);
+                showLoading(false);
+            }
+        }
+
+        // プルダウンに案件を追加
+        function populateCaseSelect() {
+            const select = document.getElementById('caseSelect');
+            select.innerHTML = '';
+
+            casesData.forEach((item, index) => {
+                const option = document.createElement('option');
+                option.value = index;
+                option.textContent = `${index + 1}. ${item.caseName}`;
+                select.appendChild(option);
+            });
+
+            if (casesData.length > 0) {
+                select.value = currentIndex;
+            }
+        }
+
+        // 案件を表示
+        function displayCase(index) {
+            if (index < 0 || index >= casesData.length) return;
+
+            currentIndex = index;
+            const caseData = casesData[index];
+
+            // ヘッダー更新
+            document.getElementById('caseCount').textContent = `${index + 1}/${casesData.length}`;
+            document.getElementById('caseSelect').value = index;
+
+            // 原文表示
+            document.getElementById('rawText').textContent = caseData.rawText || '原文なし';
+
+            // 基本情報表示
+            document.getElementById('caseNameDisplay').textContent = caseData.caseName || '';
+            document.getElementById('clientDisplay').textContent = caseData.client || '';
+            document.getElementById('dateDisplay').textContent = caseData.date || '';
+            document.getElementById('timeDisplay').textContent = caseData.workTime || '';
+
+            // 入力フィールドに値を入力
+            document.getElementById('caseName').value = caseData.caseName || '';
+            document.getElementById('client').value = caseData.client || '';
+            document.getElementById('date').value = caseData.date || '';
+            document.getElementById('time').value = caseData.workTime || '';
+
+            // ポジション別アコーディオン表示
+            displayPositionAccordions(caseData.positions || []);
+
+            // チェックボックス
+            document.getElementById('registerToCase').checked = true;
+        }
+
+        // ポジション別アコーディオン生成
+        function displayPositionAccordions(positions) {
+            const container = document.getElementById('positionAccordions');
+            container.innerHTML = '';
+
+            const positionTypes = ['D', 'AD', 'ST'];
+
+            positionTypes.forEach(posType => {
+                const posData = positions.find(p => p.position === posType);
+
+                const accordion = document.createElement('div');
+                accordion.className = 'accordion';
+
+                const header = document.createElement('div');
+                header.className = 'accordion-header';
+                header.innerHTML = `${posType} <span class="accordion-icon">▼</span>`;
+                header.onclick = () => toggleAccordion(header);
+
+                const content = document.createElement('div');
+                content.className = 'accordion-content';
+
+                if (!posData) {
+                    content.className += ' empty';
+                    content.textContent = 'このポジションはありません';
+                } else {
+                    content.innerHTML = `
+                        <div class="form-item">
+                            <label class="form-label">ポジション</label>
+                            <div class="form-value">${posData.position}</div>
+                            <input type="text" class="form-input" value="${posData.position}" disabled>
+                        </div>
+                        <div class="form-item">
+                            <label class="form-label">募集人数</label>
+                            <div class="form-value">${posData.count || 0}</div>
+                            <input type="number" class="form-input pos-count-${posType}" value="${posData.count || 0}" placeholder="修正・追加">
+                        </div>
+                        <div class="form-item">
+                            <label class="form-label">単価</label>
+                            <div class="form-value">¥${posData.unitPrice || 0}</div>
+                            <input type="number" class="form-input pos-price-${posType}" value="${posData.unitPrice || 0}" placeholder="修正・追加">
+                        </div>
+                        <div class="form-item">
+                            <label class="form-label">交通費</label>
+                            <div class="form-value">¥${posData.transport || 0}</div>
+                            <input type="number" class="form-input pos-transport-${posType}" value="${posData.transport || 0}" placeholder="修正・追加">
+                        </div>
+                        <div class="form-item">
+                            <label class="form-label">食費</label>
+                            <div class="form-value">¥${posData.meal || 0}</div>
+                            <input type="number" class="form-input pos-meal-${posType}" value="${posData.meal || 0}" placeholder="修正・追加">
+                        </div>
+                        <div class="form-item">
+                            <label class="form-label">特記</label>
+                            <div class="form-value">${posData.remark || ''}</div>
+                            <input type="text" class="form-input pos-remark-${posType}" value="${posData.remark || ''}" placeholder="修正・追加">
+                        </div>
+                    `;
+                }
+
+                accordion.appendChild(header);
+                accordion.appendChild(content);
+                container.appendChild(accordion);
+            });
+        }
+
+        // アコーディオン切り替え
+        function toggleAccordion(header) {
+            header.classList.toggle('open');
+            header.nextElementSibling.classList.toggle('open');
+        }
+
+        // ケース選択変更
+        function handleCaseChange() {
+            const index = parseInt(document.getElementById('caseSelect').value);
+            displayCase(index);
+        }
+
+        // 前へ
+        function prevCase() {
+            if (currentIndex > 0) {
+                displayCase(currentIndex - 1);
+            }
+        }
+
+        // 次へ
+        function nextCase() {
+            if (currentIndex < casesData.length - 1) {
+                displayCase(currentIndex + 1);
+            }
+        }
+
+        // データ保存
+        async function saveData() {
+            try {
+                showLoading(true);
+
+                const caseData = casesData[currentIndex];
+                const updatedData = {
+                    extId: caseData.extId,
+                    caseName: document.getElementById('caseName').value,
+                    client: document.getElementById('client').value,
+                    date: document.getElementById('date').value,
+                    workTime: document.getElementById('time').value,
+                    registerToCase: document.getElementById('registerToCase').checked,
+                    positions: {
+                        D: {
+                            count: document.querySelector('.pos-count-D')?.value || 0,
+                            unitPrice: document.querySelector('.pos-price-D')?.value || 0,
+                            transport: document.querySelector('.pos-transport-D')?.value || 0,
+                            meal: document.querySelector('.pos-meal-D')?.value || 0,
+                            remark: document.querySelector('.pos-remark-D')?.value || ''
+                        },
+                        AD: {
+                            count: document.querySelector('.pos-count-AD')?.value || 0,
+                            unitPrice: document.querySelector('.pos-price-AD')?.value || 0,
+                            transport: document.querySelector('.pos-transport-AD')?.value || 0,
+                            meal: document.querySelector('.pos-meal-AD')?.value || 0,
+                            remark: document.querySelector('.pos-remark-AD')?.value || ''
+                        },
+                        ST: {
+                            count: document.querySelector('.pos-count-ST')?.value || 0,
+                            unitPrice: document.querySelector('.pos-price-ST')?.value || 0,
+                            transport: document.querySelector('.pos-transport-ST')?.value || 0,
+                            meal: document.querySelector('.pos-meal-ST')?.value || 0,
+                            remark: document.querySelector('.pos-remark-ST')?.value || ''
+                        }
+                    }
+                };
+
+                const response = await fetch(GAS_URL, {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        action: 'saveCaseConfirmation',
+                        data: updatedData
+                    })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    showMessage('✅ 保存完了！', false);
+                    // 次の案件を自動表示
+                    setTimeout(() => {
+                        nextCase();
+                        loadCasesData();
+                    }, 800);
+                } else {
+                    showMessage('❌ 保存失敗: ' + (result.error || '不明なエラー'), true);
+                }
+
+                showLoading(false);
+            } catch (error) {
+                console.error('Save error:', error);
+                showMessage('保存エラー: ' + error.message, true);
+                showLoading(false);
+            }
+        }
+
+        // UI 関数
+        function showLoading(show) {
+            document.getElementById('loading').classList.toggle('show', show);
+        }
+
+        function showMessage(text, isError) {
+            const msg = document.getElementById('message');
+            msg.textContent = text;
+            msg.classList.toggle('error', isError);
+            msg.classList.add('show');
+
+            setTimeout(() => {
+                msg.classList.remove('show');
+            }, 3000);
+        }
+
+        // ページ読み込み
+        window.onload = () => {
+            initLiff();
+        };
+    </script>
+</body>
+</html>
