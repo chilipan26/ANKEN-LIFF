@@ -1,687 +1,973 @@
-<!DOCTYPE html>
-<html lang="ja">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>案件確認LIFF</title>
-    <script src="https://d.line-scdn.net/liff/web/sdk/liff.js"></script>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
+// ============================================================
+// ガティSS Code.gs 完全版
+// AI抽出 + LINE Webhook + LIFF① 修正版統合
+// ============================================================
+
+// ★ タブ名定義
+const シート_入力操作 = '入力・操作';
+const シート_原文ログ = '原文ログ';
+const シート_AI抽出 = 'AI抽出結果';
+const シート_確認待ち = '確認待ち';
+const シート_案件 = 'A_案件情報';
+const シート_稼働 = 'B_稼働予定';
+const シート_設定 = '🔧 設定';
+const シート_選択肢 = '📋 選択肢';
+const シート_管理 = '管理ビュー';
+const シート_目次 = '📖 目次';
+
+// ★ Claude API 設定
+const CLAUDE_MODEL = 'claude-opus-4-6';
+const CLAUDE_API_ENDPOINT = 'https://api.anthropic.com/v1/messages';
+const CLAUDE_API_VERSION = '2023-06-01';
+
+// ============================================================
+// UI メニュー
+// ============================================================
+
+function onOpen() {
+  const ui = SpreadsheetApp.getUi();
+  ui.createMenu('🚀 ガティSS 自動化')
+    .addItem('1️⃣  入力を処理（原文ログ → AI抽出）', '入力を処理する')
+    .addItem('2️⃣  確認キューを確認', '確認待ちキューを表示')
+    .addItem('3️⃣  案件を確定登録', '確認済みを案件情報に登録')
+    .addSeparator()
+    .addItem('🔧 AI抽出結果タブをリセット', 'AI抽出結果タブをリセット')
+    .addItem('📊 タブの構成を確認', 'AI抽出結果タブの構成を確認')
+    .addSeparator()
+    .addItem('🔧 テスト実行（Claude API）', 'テスト用Claude抽出')
+    .addItem('⚙️  設定を確認', '初期設定の確認')
+    .addToUi();
+}
+
+// ============================================================
+// 【統合 Webhook】LINE + LIFF を両方処理
+// ============================================================
+
+function doPost(e) {
+  const output = ContentService.createTextOutput(
+    JSON.stringify({ status: 'ok' })
+  ).setMimeType(ContentService.MimeType.JSON);
+
+  try {
+    const postData = e.postData.contents;
+    const payload = JSON.parse(postData);
+    
+    Logger.log('【Webhook 受信】');
+    
+    // ★ パターン1：LINE イベント（Webhook）
+    if (payload.events && Array.isArray(payload.events)) {
+      Logger.log('【LINE イベント処理】');
+      payload.events.forEach(event => {
+        if (event.type === 'message' && event.message.type === 'text') {
+          const LINE文 = event.message.text;
+          処理LINE文(LINE文);
         }
+      });
+      return output;
+    }
+    
+    // ★ パターン2：LIFF からのリクエスト
+    if (payload.action === 'getUnconfirmedCases') {
+      Logger.log('【LIFF: 未確認案件取得】');
+      const 結果 = LIFF1未確認案件を取得();
+      return ContentService.createTextOutput(
+        JSON.stringify(結果)
+      ).setMimeType(ContentService.MimeType.JSON);
+      
+    } else if (payload.action === 'saveCaseConfirmation') {
+      Logger.log('【LIFF: 確認データ保存】');
+      const 結果 = LIFF1確認データを保存(JSON.stringify(payload.data));
+      return ContentService.createTextOutput(
+        JSON.stringify(結果)
+      ).setMimeType(ContentService.MimeType.JSON);
+    }
+    
+  } catch(err) {
+    Logger.log('【Webhook エラー】' + err.toString());
+  }
 
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: #f5f5f5;
-            overflow: hidden;
+  return output;
+}
+
+// ============================================================
+// LINE から来たテキストを処理する
+// ============================================================
+
+function 処理LINE文(LINE文) {
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const 原文ログシート = シートを取得または作成(ss, シート_原文ログ);
+    const AI抽出シート = シートを取得または作成(ss, シート_AI抽出);
+    
+    const ログID = 原文ログに保存(原文ログシート, LINE文);
+    const 抽出データ = ClaudeでAI抽出(LINE文);
+    const 展開データリスト = 複数日程を展開(抽出データ);
+    
+    展開データリスト.forEach(展開データ => {
+      const ポジション別データ = ポジション別に展開(展開データ);
+      ポジション別データ.forEach(行データ => {
+        AI抽出に保存(AI抽出シート, ログID, 行データ);
+      });
+    });
+    
+  } catch(err) {
+    Logger.log('【処理LINE文エラー】' + err.toString());
+  }
+}
+
+// ============================================================
+// STEP 1: 入力を処理する
+// ============================================================
+
+function 入力を処理する() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const 入力シート = ss.getSheetByName(シート_入力操作);
+  const 原文ログシート = シートを取得または作成(ss, シート_原文ログ);
+  const AI抽出シート = シートを取得または作成(ss, シート_AI抽出);
+  
+  const データ = 入力シート.getDataRange().getValues();
+  
+  if (データ.length < 2) {
+    SpreadsheetApp.getUi().alert('入力データがありません');
+    return;
+  }
+  
+  const LINE文リスト = データ.slice(1)
+    .map(row => row[0])
+    .filter(text => text && text.trim());
+  
+  if (LINE文リスト.length === 0) {
+    SpreadsheetApp.getUi().alert('処理対象の LINE 文がありません');
+    return;
+  }
+  
+  let 総行数 = 0;
+  
+  LINE文リスト.forEach(LINE文 => {
+    const ログID = 原文ログに保存(原文ログシート, LINE文);
+    
+    try {
+      const 抽出データ = ClaudeでAI抽出(LINE文);
+      const 展開データリスト = 複数日程を展開(抽出データ);
+      
+      展開データリスト.forEach(展開データ => {
+        const ポジション別データ = ポジション別に展開(展開データ);
+        ポジション別データ.forEach(行データ => {
+          AI抽出に保存(AI抽出シート, ログID, 行データ);
+          総行数++;
+        });
+      });
+      
+    } catch(err) {
+      Logger.log('AI抽出エラー：' + err);
+      AI抽出に保存(AI抽出シート, ログID, { error: err.toString() });
+    }
+  });
+  
+  入力シート.getRange(2, 1, データ.length - 1, データ[0].length).clearContent();
+  
+  SpreadsheetApp.getUi().alert(
+    `完了！\n${総行数}行を AI抽出結果 に登録しました\n\n確認待ちキューを確認してください`
+  );
+}
+
+// ============================================================
+// STEP 2: 原文ログに保存
+// ============================================================
+
+function 原文ログに保存(sheet, LINE文) {
+  if (sheet.getLastRow() < 1) {
+    const ヘッダー = ['ログID', '受信日時', '原文', '処理状況', '確認担当', '備考'];
+    sheet.getRange(1, 1, 1, ヘッダー.length).setValues([ヘッダー]);
+    sheet.getRange(1, 1, 1, ヘッダー.length)
+      .setBackground('#4361EE').setFontColor('#FFFFFF').setFontWeight('bold');
+    sheet.setFrozenRows(1);
+  }
+  
+  const ログID = 'LOG_' + 日時フォーマット(new Date(), 'yyyyMMdd_HHmmss');
+  const タイムスタンプ = 日時フォーマット(new Date(), 'yyyy-MM-dd HH:mm:ss');
+  
+  sheet.appendRow([
+    ログID,
+    タイムスタンプ,
+    LINE文,
+    '抽出済',
+    '',
+    ''
+  ]);
+  
+  return ログID;
+}
+
+// ============================================================
+// 【複数日程を展開】
+// ============================================================
+
+function 複数日程を展開(抽出データ) {
+  if (!抽出データ.日程 || !Array.isArray(抽出データ.日程) || 抽出データ.日程.length === 0) {
+    return [抽出データ];
+  }
+  
+  const 展開されたデータ = [];
+  
+  抽出データ.日程.forEach((日程) => {
+    const 新規データ = {
+      案件名: 抽出データ.案件名,
+      クライアント: 抽出データ.クライアント,
+      場所: 抽出データ.場所,
+      内容: 抽出データ.内容,
+      担当者: 抽出データ.担当者,
+      
+      日付: 日程.日付開始,
+      開始時間: 日程.開始時間,
+      終了時間: 日程.終了時間,
+      稼働時間: 日程.稼働時間,
+      ポジション: 日程.ポジション || [],
+      
+      特記事項: 抽出データ.特記事項,
+      信頼度: 抽出データ.信頼度
+    };
+    
+    展開されたデータ.push(新規データ);
+  });
+  
+  return 展開されたデータ;
+}
+
+// ============================================================
+// 【ポジション別に展開】
+// ============================================================
+
+function ポジション別に展開(日程データ) {
+  const 行リスト = [];
+  
+  if (!日程データ.ポジション || !Array.isArray(日程データ.ポジション) || 日程データ.ポジション.length === 0) {
+    行リスト.push(日程データ);
+    return 行リスト;
+  }
+  
+  日程データ.ポジション.forEach((pos) => {
+    const 特記パーツ = [];
+    
+    if (pos.性別) {
+      特記パーツ.push(pos.性別);
+    }
+    if (pos.備考) {
+      特記パーツ.push(pos.備考);
+    }
+    
+    const 統合特記 = 特記パーツ.join(' / ');
+    const 稼働時間表示 = (日程データ.開始時間 || '00:00') + '~' + (日程データ.終了時間 || '00:00');
+    
+    const 行 = {
+      案件名: 日程データ.案件名,
+      クライアント: 日程データ.クライアント,
+      場所: 日程データ.場所,
+      内容: 日程データ.内容,
+      担当者: 日程データ.担当者,
+      
+      日付: 日程データ.日付,
+      稼働時間表示: 稼働時間表示,
+      稼働時間: 日程データ.稼働時間,
+      
+      ポジション: pos.ポジション || 'ST',
+      募集人数: pos.人数 || 0,
+      単価: pos.単価 || 0,
+      交通費: pos.交通費 || 0,
+      食費: pos.食費 || 0,
+      
+      特記: 統合特記,
+      
+      特記事項: 日程データ.特記事項,
+      信頼度: 日程データ.信頼度
+    };
+    
+    行リスト.push(行);
+  });
+  
+  return 行リスト;
+}
+
+// ============================================================
+// STEP 3: Claude API で AI 抽出
+// ============================================================
+
+function ClaudeでAI抽出(LINE文) {
+  const scriptProperties = PropertiesService.getScriptProperties();
+  const APIキー = scriptProperties.getProperty('CLAUDE_API_KEY');
+  
+  if (!APIキー) {
+    throw new Error('CLAUDE_API_KEY が設定されていません');
+  }
+  
+  const システムプロンプト = `あなたは派遣案件の LINE 文から構造化情報を抽出する専門家です。
+
+【重要】日程の定義：
+「日程」= 異なる時間帯 OR 異なる日付範囲 で定義される区間
+【例】
+OK：[6/11-6/13(同じ内容), 6/14(別内容)]  → 2日程オブジェクト
+NG：[6/11, 6/12, 6/13, 6/14]  → 日付ごとに分割してはいけない！
+
+【JSON フォーマット】
+{
+  "案件名": "string",
+  "クライアント": "string",
+  "場所": "string",
+  "内容": "string",
+  "担当者": {"会社": "string", "名前": "string"},
+  "日程": [
+    {
+      "日付開始": "YYYY-MM-DD",
+      "日付終了": "YYYY-MM-DD",
+      "開始時間": "HH:MM",
+      "終了時間": "HH:MM",
+      "稼働時間": number,
+      "ポジション": [
+        {
+          "ポジション": "D|AD|ST|英対|etc",
+          "人数": number,
+          "単価": number,
+          "交通費": number,
+          "食費": number,
+          "性別": "string",
+          "備考": "string"
         }
-
-        .container {
-            display: flex;
-            flex-direction: column;
-            height: 100vh;
-        }
-
-        /* ヘッダー */
-        .header {
-            background: linear-gradient(135deg, #4361EE 0%, #3A52D5 100%);
-            color: white;
-            padding: 12px 16px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-        }
-
-        .header-left {
-            font-weight: bold;
-            font-size: 14px;
-        }
-
-        .header-center {
-            flex: 1;
-            margin: 0 12px;
-        }
-
-        .header-center select {
-            width: 100%;
-            padding: 8px 12px;
-            border: none;
-            border-radius: 6px;
-            font-size: 14px;
-        }
-
-        .header-right {
-            display: flex;
-            gap: 8px;
-        }
-
-        .header-right button {
-            background: rgba(255,255,255,0.2);
-            color: white;
-            border: none;
-            padding: 6px 12px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 12px;
-        }
-
-        /* メインコンテンツ */
-        .content {
-            display: flex;
-            flex: 1;
-            overflow: hidden;
-        }
-
-        /* 左パネル - 原文 */
-        .left-panel {
-            width: 50%;
-            border-right: 2px solid #ddd;
-            overflow-y: auto;
-            padding: 16px;
-            background: white;
-        }
-
-        .left-panel h3 {
-            color: #4361EE;
-            margin-bottom: 12px;
-            font-size: 14px;
-        }
-
-        .raw-text {
-            background: #f9f9f9;
-            padding: 12px;
-            border-radius: 6px;
-            font-size: 12px;
-            line-height: 1.6;
-            white-space: pre-wrap;
-            word-break: break-word;
-            color: #333;
-        }
-
-        /* 右パネル - 編集 */
-        .right-panel {
-            width: 50%;
-            overflow-y: auto;
-            padding: 16px;
-            background: #fafafa;
-        }
-
-        .right-panel h3 {
-            color: #4361EE;
-            margin-bottom: 12px;
-            font-size: 14px;
-        }
-
-        /* 基本情報 */
-        .form-section {
-            background: white;
-            padding: 12px;
-            border-radius: 6px;
-            margin-bottom: 12px;
-        }
-
-        .form-item {
-            margin-bottom: 12px;
-        }
-
-        .form-item:last-child {
-            margin-bottom: 0;
-        }
-
-        .form-label {
-            font-weight: bold;
-            font-size: 12px;
-            color: #333;
-            margin-bottom: 4px;
-            display: block;
-        }
-
-        .form-value {
-            font-size: 12px;
-            color: #555;
-            padding: 8px;
-            background: #f5f5f5;
-            border-radius: 4px;
-            margin-bottom: 4px;
-            min-height: 24px;
-        }
-
-        .form-input {
-            width: 100%;
-            padding: 8px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            font-size: 12px;
-            font-family: inherit;
-        }
-
-        .form-input:focus {
-            outline: none;
-            border-color: #4361EE;
-            box-shadow: 0 0 4px rgba(67, 97, 238, 0.3);
-        }
-
-        /* アコーディオン */
-        .accordion {
-            margin-bottom: 8px;
-        }
-
-        .accordion-header {
-            background: white;
-            border: 1px solid #ddd;
-            padding: 12px;
-            cursor: pointer;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-radius: 6px;
-            user-select: none;
-            font-weight: bold;
-            font-size: 13px;
-            color: #333;
-            transition: all 0.2s;
-        }
-
-        .accordion-header:active {
-            background: #f0f0f0;
-        }
-
-        .accordion-icon {
-            display: inline-block;
-            transition: transform 0.2s;
-            font-size: 16px;
-        }
-
-        .accordion-header.open .accordion-icon {
-            transform: rotate(180deg);
-        }
-
-        .accordion-content {
-            display: none;
-            background: white;
-            border: 1px solid #ddd;
-            border-top: none;
-            padding: 12px;
-            border-radius: 0 0 6px 6px;
-            margin-bottom: 8px;
-        }
-
-        .accordion-content.open {
-            display: block;
-        }
-
-        .accordion-content.empty {
-            color: #999;
-            font-size: 12px;
-            padding: 16px;
-            text-align: center;
-        }
-
-        /* チェックボックス */
-        .checkbox-section {
-            background: white;
-            padding: 12px;
-            border-radius: 6px;
-            margin: 12px 0;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .checkbox-section input {
-            width: 18px;
-            height: 18px;
-            cursor: pointer;
-        }
-
-        .checkbox-section label {
-            font-size: 12px;
-            cursor: pointer;
-            flex: 1;
-        }
-
-        /* ボタン */
-        .button-section {
-            display: flex;
-            gap: 8px;
-            margin-top: 12px;
-            padding: 0 16px 16px 16px;
-            position: fixed;
-            bottom: 0;
-            right: 0;
-            width: 50%;
-            background: white;
-        }
-
-        .button-section button {
-            flex: 1;
-            padding: 12px;
-            border: none;
-            border-radius: 6px;
-            font-size: 13px;
-            font-weight: bold;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-
-        .button-save {
-            background: #4361EE;
-            color: white;
-        }
-
-        .button-save:active {
-            background: #3A52D5;
-        }
-
-        .button-next {
-            background: #e0e0e0;
-            color: #333;
-        }
-
-        .button-next:active {
-            background: #d0d0d0;
-        }
-
-        /* ローディング */
-        .loading {
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: white;
-            padding: 20px 40px;
-            border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-            display: none;
-            z-index: 1000;
-        }
-
-        .loading.show {
-            display: block;
-        }
-
-        /* メッセージ */
-        .message {
-            position: fixed;
-            top: 60px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: #4CAF50;
-            color: white;
-            padding: 12px 24px;
-            border-radius: 6px;
-            display: none;
-            z-index: 999;
-        }
-
-        .message.show {
-            display: block;
-        }
-
-        .message.error {
-            background: #f44336;
-        }
-
-        /* ボタンセクション用の余白 */
-        .right-panel-content {
-            padding-bottom: 80px;
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <!-- ヘッダー -->
-        <div class="header">
-            <div class="header-left">
-                未処理 <span id="caseCount">0/0</span>
-            </div>
-            <div class="header-center">
-                <select id="caseSelect" onchange="handleCaseChange()">
-                    <option value="">案件を選択...</option>
-                </select>
-            </div>
-            <div class="header-right">
-                <button onclick="prevCase()">◀ 前へ</button>
-                <button onclick="nextCase()">次へ ▶</button>
-            </div>
-        </div>
-
-        <!-- メインコンテンツ -->
-        <div class="content">
-            <!-- 左パネル: 原文 -->
-            <div class="left-panel">
-                <h3>【原文】</h3>
-                <div class="raw-text" id="rawText">案件を選択してください</div>
-            </div>
-
-            <!-- 右パネル: 編集 -->
-            <div class="right-panel">
-                <h3>【ポジション別編集】</h3>
-                <div class="right-panel-content">
-                    <!-- 案件共通情報（全て編集可） -->
-                    <div class="form-section" id="basicInfo">
-                        <div class="form-item">
-                            <label class="form-label">案件名</label>
-                            <div class="form-value" id="caseNameDisplay"></div>
-                            <input type="text" id="caseName" class="form-input" placeholder="修正・追加">
-                        </div>
-                        <div class="form-item">
-                            <label class="form-label">クライアント</label>
-                            <div class="form-value" id="clientDisplay"></div>
-                            <input type="text" id="client" class="form-input" placeholder="修正・追加">
-                        </div>
-                        <div class="form-item">
-                            <label class="form-label">担当者</label>
-                            <div class="form-value" id="contactDisplay"></div>
-                            <input type="text" id="contact" class="form-input" placeholder="修正・追加">
-                        </div>
-                    </div>
-
-                    <!-- ポジション別アコーディオン -->
-                    <div id="positionAccordions"></div>
-
-                    <!-- チェックボックス -->
-                    <div class="checkbox-section">
-                        <input type="checkbox" id="registerToCase" checked>
-                        <label for="registerToCase">この案件を案件情報に登録する</label>
-                    </div>
-                </div>
-
-                <!-- ボタン（固定） -->
-                <div class="button-section">
-                    <button class="button-save" onclick="saveData()">保存して確認済に</button>
-                    <button class="button-next" onclick="nextCase()">次へ ▶</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- ローディング -->
-    <div class="loading" id="loading">処理中...</div>
-
-    <!-- メッセージ -->
-    <div class="message" id="message"></div>
-
-    <script>
-        let casesData = [];
-        let currentIndex = 0;
-        const GAS_URL = 'https://script.google.com/macros/s/AKfycbwkjodARacaYxm2bST8purib_WcqE9csNCPjwovdgonksWgEHDnETsEHuYx9VRoZvtB9A/exec';
-
-        // LIFF 初期化
-        async function initLiff() {
-            try {
-                await liff.init({ liffId: '2010162762-VhyEkMPy' });
-                if (liff.isLoggedIn()) {
-                    loadCasesData();
-                } else {
-                    liff.login();
-                }
-            } catch (error) {
-                console.error('LIFF init error:', error);
-                showMessage('LIFF初期化エラー: ' + error.message, true);
-            }
-        }
-
-        // GAS からデータ取得
-        async function loadCasesData() {
-            try {
-                showLoading(true);
-                const response = await fetch(GAS_URL + '?action=getUnconfirmedCases');
-                const data = await response.json();
-                
-                casesData = data.cases || [];
-                currentIndex = 0;
-
-                if (casesData.length === 0) {
-                    showMessage('未確認案件がありません', false);
-                    return;
-                }
-
-                populateCaseSelect();
-                displayCase(0);
-                showLoading(false);
-            } catch (error) {
-                console.error('Load error:', error);
-                showMessage('データ読み込みエラー: ' + error.message, true);
-                showLoading(false);
-            }
-        }
-
-        // プルダウンに案件を追加
-        function populateCaseSelect() {
-            const select = document.getElementById('caseSelect');
-            select.innerHTML = '';
-
-            casesData.forEach((item, index) => {
-                const option = document.createElement('option');
-                option.value = index;
-                option.textContent = `${index + 1}. ${item.caseName}`;
-                select.appendChild(option);
-            });
-
-            if (casesData.length > 0) {
-                select.value = currentIndex;
-            }
-        }
-
-        // 案件を表示
-        function displayCase(index) {
-            if (index < 0 || index >= casesData.length) return;
-
-            currentIndex = index;
-            const caseData = casesData[index];
-
-            // ヘッダー更新
-            document.getElementById('caseCount').textContent = `${index + 1}/${casesData.length}`;
-            document.getElementById('caseSelect').value = index;
-
-            // 原文表示
-            document.getElementById('rawText').textContent = caseData.rawText || '原文なし';
-
-            // 基本情報表示（初期値）
-            document.getElementById('caseNameDisplay').textContent = caseData.caseName || '';
-            document.getElementById('clientDisplay').textContent = caseData.client || '';
-            document.getElementById('contactDisplay').textContent = caseData.contact || '';
-
-            // 入力フィールドに値を入力
-            document.getElementById('caseName').value = caseData.caseName || '';
-            document.getElementById('client').value = caseData.client || '';
-            document.getElementById('contact').value = caseData.contact || '';
-
-            // ポジション別アコーディオン表示
-            displayPositionAccordions(caseData.positions || []);
-
-            // チェックボックス
-            document.getElementById('registerToCase').checked = true;
-        }
-
-        // ポジション別アコーディオン生成
-        function displayPositionAccordions(positions) {
-            const container = document.getElementById('positionAccordions');
-            container.innerHTML = '';
-
-            const positionTypes = ['D', 'AD', 'ST'];
-
-            positionTypes.forEach(posType => {
-                const posDataArray = positions.filter(p => p.position === posType);
-
-                const accordion = document.createElement('div');
-                accordion.className = 'accordion';
-
-                const header = document.createElement('div');
-                header.className = 'accordion-header';
-                header.innerHTML = `${posType} <span class="accordion-icon">▼</span>`;
-                header.onclick = () => toggleAccordion(header);
-
-                const content = document.createElement('div');
-                content.className = 'accordion-content';
-
-                if (posDataArray.length === 0) {
-                    content.className += ' empty';
-                    content.textContent = 'このポジションはありません';
-                } else {
-                    // 複数の日付がある場合は全て表示
-                    let html = '';
-                    posDataArray.forEach((posData, idx) => {
-                        html += `
-                            <div style="border-bottom: 1px solid #eee; padding-bottom: 12px; margin-bottom: 12px;">
-                                <div class="form-item">
-                                    <label class="form-label">日付</label>
-                                    <div class="form-value">${posData.date || ''}</div>
-                                    <input type="text" class="form-input pos-date-${posType}-${idx}" value="${posData.date || ''}" placeholder="修正・追加">
-                                </div>
-                                <div class="form-item">
-                                    <label class="form-label">稼働時間</label>
-                                    <div class="form-value">${posData.workTime || ''}</div>
-                                    <input type="text" class="form-input pos-worktime-${posType}-${idx}" value="${posData.workTime || ''}" placeholder="修正・追加">
-                                </div>
-                                <div class="form-item">
-                                    <label class="form-label">単価</label>
-                                    <div class="form-value">¥${posData.unitPrice || 0}</div>
-                                    <input type="number" class="form-input pos-price-${posType}-${idx}" value="${posData.unitPrice || 0}" placeholder="修正・追加">
-                                </div>
-                                <div class="form-item">
-                                    <label class="form-label">交通費</label>
-                                    <div class="form-value">¥${posData.transport || 0}</div>
-                                    <input type="number" class="form-input pos-transport-${posType}-${idx}" value="${posData.transport || 0}" placeholder="修正・追加">
-                                </div>
-                                <div class="form-item">
-                                    <label class="form-label">食費</label>
-                                    <div class="form-value">¥${posData.meal || 0}</div>
-                                    <input type="number" class="form-input pos-meal-${posType}-${idx}" value="${posData.meal || 0}" placeholder="修正・追加">
-                                </div>
-                                <div class="form-item">
-                                    <label class="form-label">特記</label>
-                                    <div class="form-value">${posData.remark || ''}</div>
-                                    <input type="text" class="form-input pos-remark-${posType}-${idx}" value="${posData.remark || ''}" placeholder="修正・追加">
-                                </div>
-                            </div>
-                        `;
-                    });
-                    content.innerHTML = html;
-                }
-
-                accordion.appendChild(header);
-                accordion.appendChild(content);
-                container.appendChild(accordion);
-            });
-        }
-
-        // アコーディオン切り替え
-        function toggleAccordion(header) {
-            header.classList.toggle('open');
-            header.nextElementSibling.classList.toggle('open');
-        }
-
-        // ケース選択変更
-        function handleCaseChange() {
-            const index = parseInt(document.getElementById('caseSelect').value);
-            displayCase(index);
-        }
-
-        // 前へ
-        function prevCase() {
-            if (currentIndex > 0) {
-                displayCase(currentIndex - 1);
-            }
-        }
-
-        // 次へ
-        function nextCase() {
-            if (currentIndex < casesData.length - 1) {
-                displayCase(currentIndex + 1);
-            }
-        }
-
-        // データ保存
-        async function saveData() {
-            try {
-                showLoading(true);
-
-                const caseData = casesData[currentIndex];
-                const updatedData = {
-                    extId: caseData.extId,
-                    caseName: document.getElementById('caseName').value,
-                    client: document.getElementById('client').value,
-                    contact: document.getElementById('contact').value,
-                    registerToCase: document.getElementById('registerToCase').checked,
-                    positions: {}
-                };
-
-                // ポジション別データを収集
-                const positionTypes = ['D', 'AD', 'ST'];
-                positionTypes.forEach(posType => {
-                    updatedData.positions[posType] = [];
-                    
-                    // 各ポジションの複数日付データを取得
-                    let idx = 0;
-                    while (document.querySelector(`.pos-date-${posType}-${idx}`) !== null) {
-                        const dateInput = document.querySelector(`.pos-date-${posType}-${idx}`);
-                        if (dateInput) {
-                            updatedData.positions[posType].push({
-                                date: dateInput.value || '',
-                                workTime: document.querySelector(`.pos-worktime-${posType}-${idx}`)?.value || '',
-                                unitPrice: document.querySelector(`.pos-price-${posType}-${idx}`)?.value || 0,
-                                transport: document.querySelector(`.pos-transport-${posType}-${idx}`)?.value || 0,
-                                meal: document.querySelector(`.pos-meal-${posType}-${idx}`)?.value || 0,
-                                remark: document.querySelector(`.pos-remark-${posType}-${idx}`)?.value || ''
-                            });
-                        }
-                        idx++;
-                    }
-                });
-
-                const response = await fetch(GAS_URL, {
-                    method: 'POST',
-                    body: JSON.stringify({
-                        action: 'saveCaseConfirmation',
-                        data: updatedData
-                    })
-                });
-
-                const result = await response.json();
-
-                if (result.success) {
-                    showMessage('✅ 保存完了！', false);
-                    setTimeout(() => {
-                        nextCase();
-                        loadCasesData();
-                    }, 800);
-                } else {
-                    showMessage('❌ 保存失敗: ' + (result.error || '不明なエラー'), true);
-                }
-
-                showLoading(false);
-            } catch (error) {
-                console.error('Save error:', error);
-                showMessage('保存エラー: ' + error.message, true);
-                showLoading(false);
-            }
-        }
-
-        // UI 関数
-        function showLoading(show) {
-            document.getElementById('loading').classList.toggle('show', show);
-        }
-
-        function showMessage(text, isError) {
-            const msg = document.getElementById('message');
-            msg.textContent = text;
-            msg.classList.toggle('error', isError);
-            msg.classList.add('show');
-
-            setTimeout(() => {
-                msg.classList.remove('show');
-            }, 3000);
-        }
-
-        // ページ読み込み
-        window.onload = () => {
-            initLiff();
+      ]
+    }
+  ],
+  "特記事項": ["string"],
+  "信頼度": 0.0～1.0
+}
+
+【抽出の超重要ルール】
+1. 日付ごとに分割してはいけない（時間帯が異なる場合のみ別オブジェクト）
+2. ポジション_ポジション は D|AD|ST|英対 など シンプルに
+3. ポジション_人数 は 数字のみ（例：1, 5, 2）
+4. 指名は「備考」フィールドに記載`;
+  
+  const 完全プロンプト = `${システムプロンプト}
+
+【提供する LINE 文】
+${LINE文}
+
+JSON のみを返してください。`;
+  
+  const ペイロード = {
+    model: CLAUDE_MODEL,
+    max_tokens: 2048,
+    messages: [{role: 'user', content: 完全プロンプト}]
+  };
+  
+  Logger.log('【Claude API リクエスト】モデル：' + CLAUDE_MODEL);
+  
+  const オプション = {
+    method: 'post',
+    headers: {
+      'x-api-key': APIキー,
+      'anthropic-version': CLAUDE_API_VERSION,
+      'content-type': 'application/json'
+    },
+    payload: JSON.stringify(ペイロード),
+    muteHttpExceptions: true
+  };
+  
+  const レスポンス = UrlFetchApp.fetch(CLAUDE_API_ENDPOINT, オプション);
+  const ステータス = レスポンス.getResponseCode();
+  
+  if (ステータス !== 200) {
+    throw new Error('Claude API エラー：' + ステータス);
+  }
+  
+  const 結果 = JSON.parse(レスポンス.getContentText());
+  const レスポンステキスト = 結果.content[0].text;
+  const JSONマッチ = レスポンステキスト.match(/\{[\s\S]*\}/);
+  
+  if (!JSONマッチ) {
+    throw new Error('応答に JSON が含まれていません');
+  }
+  
+  const 抽出済み = JSON.parse(JSONマッチ[0]);
+  
+  if (!抽出済み.信頼度) {
+    抽出済み.信頼度 = 0.95;
+  }
+  
+  Logger.log('【✅ 抽出成功】案件名：' + (抽出済み.案件名 || '不明'));
+  
+  return 抽出済み;
+}
+
+// ============================================================
+// STEP 4: AI抽出結果に保存
+// ============================================================
+
+function AI抽出に保存(sheet, ログID, 行データ) {
+  if (sheet.getLastRow() < 1) {
+    const ヘッダー = [
+      '抽出ID', 'ログID', '案件名', 'クライアント', '日付',
+      '稼働時間', 'ポジション', '募集人数', '単価', '交通費', '食費', '特記',
+      '信頼度', '確認状況', '修正内容', '確認者', '確認日時'
+    ];
+    sheet.getRange(1, 1, 1, ヘッダー.length).setValues([ヘッダー]);
+    sheet.getRange(1, 1, 1, ヘッダー.length)
+      .setBackground('#4361EE').setFontColor('#FFFFFF').setFontWeight('bold');
+    sheet.setFrozenRows(1);
+  }
+  
+  const 抽出ID = 'EXT_' + 日時フォーマット(new Date(), 'yyyyMMdd_HHmmss');
+  
+  let 担当者名 = '';
+  if (typeof 行データ.担当者 === 'object' && 行データ.担当者) {
+    担当者名 = 行データ.担当者.名前 || '';
+  } else {
+    担当者名 = 行データ.担当者 || '';
+  }
+  
+  const 行 = [
+    抽出ID,
+    ログID,
+    行データ.案件名 || '',
+    行データ.クライアント || '',
+    行データ.日付 || '',
+    行データ.稼働時間表示 || '00:00~00:00',
+    行データ.ポジション || 'ST',
+    行データ.募集人数 || 0,
+    行データ.単価 || 0,
+    行データ.交通費 || 0,
+    行データ.食費 || 0,
+    行データ.特記 || '',
+    行データ.信頼度 || 0,
+    '未確認',
+    '',
+    '',
+    ''
+  ];
+  
+  sheet.appendRow(行);
+  
+  if ((行データ.信頼度 || 0) < 0.85) {
+    const 最後の行 = sheet.getLastRow();
+    sheet.getRange(最後の行, 1, 1, 行.length).setBackground('#fff3cd');
+  }
+}
+
+// ============================================================
+// その他の関数
+// ============================================================
+
+function 確認待ちキューを表示() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const AI抽出シート = ss.getSheetByName(シート_AI抽出);
+  
+  if (!AI抽出シート) {
+    SpreadsheetApp.getUi().alert('AI抽出結果シートが見つかりません');
+    return;
+  }
+  
+  const データ = AI抽出シート.getDataRange().getValues();
+  const 確認待ち = データ.slice(1).filter(row => row[13] === '未確認');
+  
+  if (確認待ち.length === 0) {
+    SpreadsheetApp.getUi().alert('確認待ちの項目がありません');
+    return;
+  }
+  
+  let html = '<h2>確認待ちキュー</h2>';
+  html += `<p>確認待ち件数：<strong>${確認待ち.length}</strong>件</p>`;
+  html += '<table border="1" style="width:100%; border-collapse:collapse;">';
+  html += '<tr style="background:#4361EE; color:white;"><th>日付</th><th>案件名</th><th>ポジション</th><th>募集人数</th><th>信頼度</th></tr>';
+  
+  確認待ち.forEach((row) => {
+    const bgColor = (parseFloat(row[12]) || 0) < 0.85 ? '#fff3cd' : '#ffffff';
+    html += `<tr style="background:${bgColor};"><td>${row[4]}</td><td>${row[2]}</td><td>${row[6]}</td><td>${row[7]}</td><td>${(parseFloat(row[12]) || 0).toFixed(2)}</td></tr>`;
+  });
+  
+  html += '</table>';
+  
+  const htmlOutput = HtmlService.createHtmlOutput(html).setWidth(700).setHeight(400);
+  SpreadsheetApp.getUi().showModelessDialog(htmlOutput, '確認待ちキュー');
+}
+
+function 確認済みを案件情報に登録() {
+  SpreadsheetApp.getUi().alert('実装予定');
+}
+
+function テスト用Claude抽出() {
+  const テストLINE文 = `〇京都学会資生堂ブース
+日時：
+6/11（木）～6/13（土）9：00～19：00※10時間
+6/14（日）9：00～14：00※5時間
+場所：京都国際会議場
+人材：
+女性D：1名※折田さん指名※6/11～14まで通し
+女性スタッフ：5名※6/11～14まで通し※最終日6/14は2名で
+16,500円+交通費2000円+昼食費800円
+14日は5hのみの稼働なので
+10,000円+交通費2000円+昼食費800円
+G Planning 横山`;
+  
+  try {
+    Logger.log('=== 【テスト開始】 ===');
+    const 抽出 = ClaudeでAI抽出(テストLINE文);
+    const 展開 = 複数日程を展開(抽出);
+    
+    let 総行数 = 0;
+    展開.forEach((日程データ) => {
+      const ポジション別 = ポジション別に展開(日程データ);
+      総行数 += ポジション別.length;
+    });
+    
+    Logger.log('=== 【✅ テスト成功】 ===');
+    Logger.log('総行数（ポジション別展開後）：' + 総行数);
+    
+    SpreadsheetApp.getUi().alert('✅ テスト成功！\n展開後：' + 総行数 + '行\n\nLogger を確認してください');
+    
+  } catch(err) {
+    Logger.log('❌ エラー：' + err.toString());
+    SpreadsheetApp.getUi().alert('❌ テスト失敗\n\n' + err.toString());
+  }
+}
+
+function 初期設定の確認() {
+  const scriptProperties = PropertiesService.getScriptProperties();
+  const APIキー = scriptProperties.getProperty('CLAUDE_API_KEY');
+  
+  let メッセージ = '【初期設定確認】\n';
+  メッセージ += (APIキー ? '✅ CLAUDE_API_KEY 設定済\n' : '❌ CLAUDE_API_KEY 未設定\n');
+  メッセージ += '\n【使用モデル】\n' + CLAUDE_MODEL;
+  メッセージ += '\n\n【機能】\n✅ ポジション別展開\n✅ セル分割\n✅ Opus 4.6\n✅ LIFF① 修正版対応';
+  
+  SpreadsheetApp.getUi().alert(メッセージ);
+}
+
+// ============================================================
+// LIFF① バックエンド関数（修正版）
+// ============================================================
+
+function LIFF1未確認案件を取得() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const AI抽出シート = ss.getSheetByName('AI抽出結果');
+  
+  if (!AI抽出シート) {
+    return { success: false, error: 'AI抽出結果シートが見つかりません' };
+  }
+  
+  const データ = AI抽出シート.getDataRange().getValues();
+  const 案件グループ = [];
+  
+  // ヘッダー行を取得
+  const ヘッダー = データ[0];
+  const 抽出IDインデックス = ヘッダー.indexOf('抽出ID');
+  const 案件名インデックス = ヘッダー.indexOf('案件名');
+  const クライアントインデックス = ヘッダー.indexOf('クライアント');
+  const 日付インデックス = ヘッダー.indexOf('日付');
+  const 稼働時間インデックス = ヘッダー.indexOf('稼働時間');
+  const ポジションインデックス = ヘッダー.indexOf('ポジション');
+  const 募集人数インデックス = ヘッダー.indexOf('募集人数');
+  const 単価インデックス = ヘッダー.indexOf('単価');
+  const 交通費インデックス = ヘッダー.indexOf('交通費');
+  const 食費インデックス = ヘッダー.indexOf('食費');
+  const 特記インデックス = ヘッダー.indexOf('特記');
+  const 確認状況インデックス = ヘッダー.indexOf('確認状況');
+  
+  // 未確認案件を抽出
+  for (let i = 1; i < データ.length; i++) {
+    const 行 = データ[i];
+    
+    if (行[確認状況インデックス] === '未確認') {
+      const 案件キー = 行[案件名インデックス] + '|' + 行[クライアントインデックス];
+      
+      // 案件グループを見つけるまたは作成
+      let グループ = 案件グループ.find(g => g.グループキー === 案件キー);
+      
+      if (!グループ) {
+        グループ = {
+          グループキー: 案件キー,
+          extId: 行[抽出IDインデックス],
+          caseName: 行[案件名インデックス],
+          client: 行[クライアントインデックス],
+          contact: '',
+          positions: {},
+          rowIndices: []
         };
-    </script>
-</body>
-</html>
+        案件グループ.push(グループ);
+      }
+      
+      // ポジション別データを集約
+      const pos = 行[ポジションインデックス];
+      if (!グループ.positions[pos]) {
+        グループ.positions[pos] = [];
+      }
+      
+      // 同じポジションで同じ日付のデータを探す
+      let 日付データ = グループ.positions[pos].find(
+        p => p.date === 行[日付インデックス]
+      );
+      
+      if (!日付データ) {
+        日付データ = {
+          date: 行[日付インデックス],
+          workTime: 行[稼働時間インデックス],
+          unitPrice: 行[単価インデックス],
+          transport: 行[交通費インデックス],
+          meal: 行[食費インデックス],
+          remark: 行[特記インデックス],
+          rowIndex: i
+        };
+        グループ.positions[pos].push(日付データ);
+      }
+      
+      グループ.rowIndices.push(i);
+    }
+  }
+  
+  // 原文ログから原文を取得
+  const 原文ログシート = ss.getSheetByName('原文ログ');
+  let rawText = '（原文ログから取得）';
+  
+  if (原文ログシート) {
+    const 原文データ = 原文ログシート.getDataRange().getValues();
+    const ログIDインデックス = 原文データ[0].indexOf('ログID');
+    const 原文インデックス = 原文データ[0].indexOf('原文');
+    
+    案件グループ.forEach(グループ => {
+      const 原文行 = 原文データ.find(row => row[ログIDインデックス] === グループ.extId);
+      if (原文行) {
+        rawText = 原文行[原文インデックス];
+        // 原文から担当者を抽出（簡易版：最後の行の企業名）
+        const 行テキスト = rawText.split('\n');
+        if (行テキスト.length > 0) {
+          グループ.contact = 行テキスト[行テキスト.length - 1].trim();
+        }
+      }
+    });
+  }
+  
+  // 共通情報を付与
+  案件グループ.forEach(グループ => {
+    グループ.rawText = rawText;
+  });
+  
+  Logger.log('【未確認案件取得】' + 案件グループ.length + '件');
+  
+  return {
+    success: true,
+    cases: 案件グループ
+  };
+}
+
+function LIFF1確認データを保存(dataJson) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const AI抽出シート = ss.getSheetByName('AI抽出結果');
+  const 案件シート = ss.getSheetByName('A_案件情報');
+  
+  if (!AI抽出シート || !案件シート) {
+    return { success: false, error: 'シートが見つかりません' };
+  }
+  
+  try {
+    const データ = JSON.parse(dataJson);
+    const extId = データ.extId;
+    const registerToCase = データ.registerToCase;
+    const caseName = データ.caseName;
+    const client = データ.client;
+    const contact = データ.contact;
+    const positions = データ.positions || {};
+    
+    // AI抽出結果シートを更新
+    const AI抽出データ = AI抽出シート.getDataRange().getValues();
+    const ヘッダー = AI抽出データ[0];
+    const 確認状況インデックス = ヘッダー.indexOf('確認状況');
+    const 案件名インデックス = ヘッダー.indexOf('案件名');
+    const クライアントインデックス = ヘッダー.indexOf('クライアント');
+    const 日付インデックス = ヘッダー.indexOf('日付');
+    const 稼働時間インデックス = ヘッダー.indexOf('稼働時間');
+    const ポジションインデックス = ヘッダー.indexOf('ポジション');
+    const 単価インデックス = ヘッダー.indexOf('単価');
+    const 交通費インデックス = ヘッダー.indexOf('交通費');
+    const 食費インデックス = ヘッダー.indexOf('食費');
+    const 特記インデックス = ヘッダー.indexOf('特記');
+    
+    let 更新行数 = 0;
+    
+    for (let i = 1; i < AI抽出データ.length; i++) {
+      if (AI抽出データ[i][0] === extId) {
+        const pos = AI抽出データ[i][ポジションインデックス];
+        const date = AI抽出データ[i][日付インデックス];
+        
+        // 該当ポジション・日付のデータを取得
+        if (positions[pos]) {
+          const 日付データ = positions[pos].find(p => p.date === date);
+          
+          if (日付データ) {
+            // 修正データで更新
+            AI抽出シート.getRange(i + 1, 案件名インデックス + 1).setValue(caseName);
+            AI抽出シート.getRange(i + 1, クライアントインデックス + 1).setValue(client);
+            AI抽出シート.getRange(i + 1, 日付インデックス + 1).setValue(日付データ.date);
+            AI抽出シート.getRange(i + 1, 稼働時間インデックス + 1).setValue(日付データ.workTime);
+            AI抽出シート.getRange(i + 1, 単価インデックス + 1).setValue(日付データ.unitPrice);
+            AI抽出シート.getRange(i + 1, 交通費インデックス + 1).setValue(日付データ.transport);
+            AI抽出シート.getRange(i + 1, 食費インデックス + 1).setValue(日付データ.meal);
+            AI抽出シート.getRange(i + 1, 特記インデックス + 1).setValue(日付データ.remark);
+          }
+        }
+        
+        // 確認状況を更新
+        AI抽出シート.getRange(i + 1, 確認状況インデックス + 1).setValue('確認済');
+        更新行数++;
+      }
+    }
+    
+    // registerToCase が TRUE の場合、A_案件情報に登録
+    if (registerToCase) {
+      LIFF1案件情報に登録(AI抽出シート, 案件シート, extId, caseName, client, contact, positions);
+    }
+    
+    Logger.log('【確認データ保存】' + 更新行数 + '行更新');
+    
+    return {
+      success: true,
+      message: '保存完了：' + 更新行数 + '行'
+    };
+    
+  } catch(err) {
+    Logger.log('【保存エラー】' + err.toString());
+    return { success: false, error: err.toString() };
+  }
+}
+
+function LIFF1案件情報に登録(AI抽出シート, 案件シート, extId, caseName, client, contact, positions) {
+  const AI抽出データ = AI抽出シート.getDataRange().getValues();
+  const ヘッダー = AI抽出データ[0];
+  
+  const 抽出IDインデックス = ヘッダー.indexOf('抽出ID');
+  const ポジションインデックス = ヘッダー.indexOf('ポジション');
+  const 募集人数インデックス = ヘッダー.indexOf('募集人数');
+  const 単価インデックス = ヘッダー.indexOf('単価');
+  const 交通費インデックス = ヘッダー.indexOf('交通費');
+  const 食費インデックス = ヘッダー.indexOf('食費');
+  const 特記インデックス = ヘッダー.indexOf('特記');
+  
+  // ヘッダーを初期化（なければ）
+  if (案件シート.getLastRow() < 1) {
+    const 案件ヘッダー = [
+      'project_id', '抽出ID', '案件名', 'クライアント', '担当者', '日付',
+      'ポジション', '募集人数', '単価', '交通費', '食費', '特記',
+      'ステータス', '最終更新', '備考'
+    ];
+    案件シート.getRange(1, 1, 1, 案件ヘッダー.length).setValues([案件ヘッダー]);
+    案件シート.getRange(1, 1, 1, 案件ヘッダー.length)
+      .setBackground('#4361EE').setFontColor('#FFFFFF').setFontWeight('bold');
+  }
+  
+  // 該当行を案件情報に登録
+  for (let i = 1; i < AI抽出データ.length; i++) {
+    if (AI抽出データ[i][抽出IDインデックス] === extId) {
+      const project_id = 'PJ_' + 日時フォーマット(new Date(), 'yyyyMMdd_HHmmss');
+      const タイムスタンプ = 日時フォーマット(new Date(), 'yyyy-MM-dd HH:mm:ss');
+      const pos = AI抽出データ[i][ポジションインデックス];
+      const date = AI抽出データ[i][ヘッダー.indexOf('日付')];
+      
+      // 修正データを取得
+      let unitPrice = AI抽出データ[i][単価インデックス];
+      let transport = AI抽出データ[i][交通費インデックス];
+      let meal = AI抽出データ[i][食費インデックス];
+      let remark = AI抽出データ[i][特記インデックス];
+      
+      if (positions[pos]) {
+        const 日付データ = positions[pos].find(p => p.date === date);
+        if (日付データ) {
+          unitPrice = 日付データ.unitPrice;
+          transport = 日付データ.transport;
+          meal = 日付データ.meal;
+          remark = 日付データ.remark;
+        }
+      }
+      
+      const 行 = [
+        project_id,
+        extId,
+        caseName,
+        client,
+        contact,
+        date,
+        pos,
+        AI抽出データ[i][募集人数インデックス],
+        unitPrice,
+        transport,
+        meal,
+        remark,
+        '新規',
+        タイムスタンプ,
+        ''
+      ];
+      
+      案件シート.appendRow(行);
+    }
+  }
+  
+  Logger.log('【案件情報に登録】完了');
+}
+
+function AI抽出結果タブをリセット() {
+  const ui = SpreadsheetApp.getUi();
+  
+  const response = ui.alert(
+    '【AI抽出結果タブのリセット】\n\n' +
+    '既存データをどうしますか？\n\n' +
+    '「はい」：既存データを保護して、ヘッダーのみ更新\n' +
+    '「いいえ」：タブを全消去して新規作成',
+    ui.ButtonSet.YES_NO
+  );
+  
+  try {
+    if (response == ui.Button.YES) {
+      Logger.log('【モード】上書き（既存データ保護）');
+      AI抽出結果タブを上書き更新();
+    } else {
+      Logger.log('【モード】全消去して新規作成');
+      AI抽出結果タブを全消去して再作成();
+    }
+  } catch(err) {
+    Logger.log('❌ エラー：' + err.toString());
+    ui.alert('❌ エラーが発生しました\n\n' + err.toString());
+  }
+}
+
+function AI抽出結果タブを上書き更新() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sheet = ss.getSheetByName('AI抽出結果');
+  
+  if (!sheet) {
+    Logger.log('【タブが存在しません】新規作成します');
+    sheet = ss.insertSheet('AI抽出結果');
+  }
+  
+  const 新ヘッダー = [
+    '抽出ID', 'ログID', '案件名', 'クライアント', '日付',
+    '稼働時間', 'ポジション', '募集人数', '単価', '交通費', '食費', '特記',
+    '信頼度', '確認状況', '修正内容', '確認者', '確認日時'
+  ];
+  
+  const 現在の列数 = sheet.getLastColumn();
+  const 新しい列数 = 新ヘッダー.length;
+  
+  Logger.log('【現在の列数】' + 現在の列数);
+  Logger.log('【新しい列数】' + 新しい列数);
+  
+  if (新しい列数 > 現在の列数) {
+    sheet.insertColumns(現在の列数 + 1, 新しい列数 - 現在の列数);
+    Logger.log('【列を追加】' + (新しい列数 - 現在の列数) + '列');
+  }
+  
+  sheet.getRange(1, 1, 1, 新ヘッダー.length).setValues([新ヘッダー]);
+  sheet.getRange(1, 1, 1, 新ヘッダー.length)
+    .setBackground('#4361EE')
+    .setFontColor('#FFFFFF')
+    .setFontWeight('bold');
+  
+  sheet.setFrozenRows(1);
+  
+  SpreadsheetApp.getUi().alert(
+    '✅ ヘッダーを更新しました！\n\n' +
+    '【更新内容】\n' +
+    '- 列数：' + 新しい列数 + '列\n' +
+    '- 既存データ：保護済み\n\n' +
+    '「AI抽出結果」タブを確認してください'
+  );
+  
+  Logger.log('✅ ヘッダー上書き更新完了');
+}
+
+function AI抽出結果タブを全消去して再作成() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sheet = ss.getSheetByName('AI抽出結果');
+  
+  if (sheet) {
+    Logger.log('【既存タブを削除】AI抽出結果');
+    ss.deleteSheet(sheet);
+  }
+  
+  sheet = ss.insertSheet('AI抽出結果');
+  Logger.log('【新規タブを作成】AI抽出結果');
+  
+  const 新ヘッダー = [
+    '抽出ID', 'ログID', '案件名', 'クライアント', '日付',
+    '稼働時間', 'ポジション', '募集人数', '単価', '交通費', '食費', '特記',
+    '信頼度', '確認状況', '修正内容', '確認者', '確認日時'
+  ];
+  
+  sheet.getRange(1, 1, 1, 新ヘッダー.length).setValues([新ヘッダー]);
+  sheet.getRange(1, 1, 1, 新ヘッダー.length)
+    .setBackground('#4361EE')
+    .setFontColor('#FFFFFF')
+    .setFontWeight('bold');
+  
+  sheet.setFrozenRows(1);
+  sheet.autoResizeColumns(1, 新ヘッダー.length);
+  
+  SpreadsheetApp.getUi().alert(
+    '✅ タブを全消去して新規作成しました！\n\n' +
+    '【新規タブ】\n' +
+    '- 名前：AI抽出結果\n' +
+    '- 列数：' + 新ヘッダー.length + '列\n' +
+    '- ヘッダー：設定済み\n\n' +
+    '「AI抽出結果」タブを確認してください'
+  );
+  
+  Logger.log('✅ 全消去・新規作成完了');
+}
+
+function AI抽出結果タブの構成を確認() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName('AI抽出結果');
+  
+  if (!sheet) {
+    SpreadsheetApp.getUi().alert('「AI抽出結果」タブが見つかりません');
+    return;
+  }
+  
+  const 現在のヘッダー = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  const データ行数 = Math.max(0, sheet.getLastRow() - 1);
+  
+  let メッセージ = '【AI抽出結果タブの構成】\n\n';
+  メッセージ += '【ヘッダー】' + 現在のヘッダー.length + '列\n';
+  現在のヘッダー.forEach((header, index) => {
+    メッセージ += '  ' + (index + 1) + '列：' + header + '\n';
+  });
+  
+  メッセージ += '\n【データ】' + データ行数 + '行\n';
+  
+  SpreadsheetApp.getUi().alert(メッセージ);
+  
+  Logger.log('【ヘッダー確認】');
+  Logger.log(現在のヘッダー);
+  Logger.log('【データ行数】' + データ行数);
+}
+
+// ============================================================
+// ユーティリティ
+// ============================================================
+
+function シートを取得または作成(ss, シート名) {
+  let sheet = ss.getSheetByName(シート名);
+  if (!sheet) {
+    sheet = ss.insertSheet(シート名);
+  }
+  return sheet;
+}
+
+function 日時フォーマット(日付, フォーマット) {
+  return Utilities.formatDate(日付, 'Asia/Tokyo', フォーマット);
+}
+
+// ============================================================
+// テスト関数：LIFF未確認案件取得のテスト
+// ============================================================
+
+function テストLIFF未確認案件取得() {
+  Logger.log('=== 【テスト開始】LIFF未確認案件取得 ===');
+  const 結果 = LIFF1未確認案件を取得();
+  Logger.log(JSON.stringify(結果, null, 2));
+  Logger.log('=== 【テスト完了】 ===');
+}
