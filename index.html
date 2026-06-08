@@ -421,21 +421,28 @@
                 }
             } catch (error) {
                 console.error('LIFF init error:', error);
-                showMessage('LIFF初期化エラー: ' + error.message, true);
+                // LIFF初期化に失敗してもデータ取得は試みる（ブラウザテスト用）
+                loadCasesData();
             }
         }
 
-        // GAS からデータ取得
+        // GAS からデータ取得（★ POST + CORS対策）
         async function loadCasesData() {
             try {
                 showLoading(true);
-                const response = await fetch(GAS_URL + '?action=getUnconfirmedCases');
+                const response = await fetch(GAS_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    redirect: 'follow',
+                    body: JSON.stringify({ action: 'getUnconfirmedCases' })
+                });
                 const data = await response.json();
                 
                 casesData = data.cases || [];
                 currentIndex = 0;
 
                 if (casesData.length === 0) {
+                    showLoading(false);
                     showMessage('未確認案件がありません', false);
                     return;
                 }
@@ -492,21 +499,31 @@
             document.getElementById('contact').value = caseData.contact || '';
 
             // ポジション別アコーディオン表示
-            displayPositionAccordions(caseData.positions || []);
+            displayPositionAccordions(caseData.positions || {});
 
             // チェックボックス
             document.getElementById('registerToCase').checked = true;
         }
 
-        // ポジション別アコーディオン生成
+        // ポジション別アコーディオン生成（★ positions はオブジェクト形式）
         function displayPositionAccordions(positions) {
             const container = document.getElementById('positionAccordions');
             container.innerHTML = '';
 
-            const positionTypes = ['D', 'AD', 'ST'];
+            // GAS から来る positions は { D: [...], ST: [...] } のオブジェクト形式
+            // 固定の D/AD/ST + その他のポジション（英対/案内STなど）も表示
+            const fixedTypes = ['D', 'AD', 'ST'];
+            const allTypes = [...fixedTypes];
 
-            positionTypes.forEach(posType => {
-                const posDataArray = positions.filter(p => p.position === posType);
+            // positions に含まれる固定外のポジションを追加
+            Object.keys(positions).forEach(posType => {
+                if (!allTypes.includes(posType)) {
+                    allTypes.push(posType);
+                }
+            });
+
+            allTypes.forEach(posType => {
+                const posDataArray = positions[posType] || [];
 
                 const accordion = document.createElement('div');
                 accordion.className = 'accordion';
@@ -526,37 +543,39 @@
                     // 複数の日付がある場合は全て表示
                     let html = '';
                     posDataArray.forEach((posData, idx) => {
+                        // CSS セレクタ用にポジション名をエスケープ（英対/案内ST → 英対案内ST）
+                        const safeKey = posType.replace(/[^a-zA-Z0-9ぁ-んァ-ヶ一-龠]/g, '');
                         html += `
-                            <div style="border-bottom: 1px solid #eee; padding-bottom: 12px; margin-bottom: 12px;">
+                            <div style="border-bottom: 1px solid #eee; padding-bottom: 12px; margin-bottom: 12px;" data-pos="${posType}" data-idx="${idx}">
                                 <div class="form-item">
                                     <label class="form-label">日付</label>
                                     <div class="form-value">${posData.date || ''}</div>
-                                    <input type="text" class="form-input pos-date-${posType}-${idx}" value="${posData.date || ''}" placeholder="修正・追加">
+                                    <input type="text" class="form-input field-date" value="${posData.date || ''}" placeholder="修正・追加">
                                 </div>
                                 <div class="form-item">
                                     <label class="form-label">稼働時間</label>
                                     <div class="form-value">${posData.workTime || ''}</div>
-                                    <input type="text" class="form-input pos-worktime-${posType}-${idx}" value="${posData.workTime || ''}" placeholder="修正・追加">
+                                    <input type="text" class="form-input field-worktime" value="${posData.workTime || ''}" placeholder="修正・追加">
                                 </div>
                                 <div class="form-item">
                                     <label class="form-label">単価</label>
                                     <div class="form-value">¥${posData.unitPrice || 0}</div>
-                                    <input type="number" class="form-input pos-price-${posType}-${idx}" value="${posData.unitPrice || 0}" placeholder="修正・追加">
+                                    <input type="number" class="form-input field-price" value="${posData.unitPrice || 0}" placeholder="修正・追加">
                                 </div>
                                 <div class="form-item">
                                     <label class="form-label">交通費</label>
                                     <div class="form-value">¥${posData.transport || 0}</div>
-                                    <input type="number" class="form-input pos-transport-${posType}-${idx}" value="${posData.transport || 0}" placeholder="修正・追加">
+                                    <input type="number" class="form-input field-transport" value="${posData.transport || 0}" placeholder="修正・追加">
                                 </div>
                                 <div class="form-item">
                                     <label class="form-label">食費</label>
                                     <div class="form-value">¥${posData.meal || 0}</div>
-                                    <input type="number" class="form-input pos-meal-${posType}-${idx}" value="${posData.meal || 0}" placeholder="修正・追加">
+                                    <input type="number" class="form-input field-meal" value="${posData.meal || 0}" placeholder="修正・追加">
                                 </div>
                                 <div class="form-item">
                                     <label class="form-label">特記</label>
                                     <div class="form-value">${posData.remark || ''}</div>
-                                    <input type="text" class="form-input pos-remark-${posType}-${idx}" value="${posData.remark || ''}" placeholder="修正・追加">
+                                    <input type="text" class="form-input field-remark" value="${posData.remark || ''}" placeholder="修正・追加">
                                 </div>
                             </div>
                         `;
@@ -596,7 +615,7 @@
             }
         }
 
-        // データ保存
+        // データ保存（★ POST + CORS対策）
         async function saveData() {
             try {
                 showLoading(true);
@@ -611,31 +630,27 @@
                     positions: {}
                 };
 
-                // ポジション別データを収集
-                const positionTypes = ['D', 'AD', 'ST'];
-                positionTypes.forEach(posType => {
-                    updatedData.positions[posType] = [];
-                    
-                    // 各ポジションの複数日付データを取得
-                    let idx = 0;
-                    while (document.querySelector(`.pos-date-${posType}-${idx}`) !== null) {
-                        const dateInput = document.querySelector(`.pos-date-${posType}-${idx}`);
-                        if (dateInput) {
-                            updatedData.positions[posType].push({
-                                date: dateInput.value || '',
-                                workTime: document.querySelector(`.pos-worktime-${posType}-${idx}`)?.value || '',
-                                unitPrice: document.querySelector(`.pos-price-${posType}-${idx}`)?.value || 0,
-                                transport: document.querySelector(`.pos-transport-${posType}-${idx}`)?.value || 0,
-                                meal: document.querySelector(`.pos-meal-${posType}-${idx}`)?.value || 0,
-                                remark: document.querySelector(`.pos-remark-${posType}-${idx}`)?.value || ''
-                            });
-                        }
-                        idx++;
+                // ポジション別データを収集（data-pos / data-idx 属性から）
+                const blocks = document.querySelectorAll('#positionAccordions [data-pos]');
+                blocks.forEach(block => {
+                    const posType = block.getAttribute('data-pos');
+                    if (!updatedData.positions[posType]) {
+                        updatedData.positions[posType] = [];
                     }
+                    updatedData.positions[posType].push({
+                        date: block.querySelector('.field-date')?.value || '',
+                        workTime: block.querySelector('.field-worktime')?.value || '',
+                        unitPrice: block.querySelector('.field-price')?.value || 0,
+                        transport: block.querySelector('.field-transport')?.value || 0,
+                        meal: block.querySelector('.field-meal')?.value || 0,
+                        remark: block.querySelector('.field-remark')?.value || ''
+                    });
                 });
 
                 const response = await fetch(GAS_URL, {
                     method: 'POST',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    redirect: 'follow',
                     body: JSON.stringify({
                         action: 'saveCaseConfirmation',
                         data: updatedData
@@ -647,7 +662,6 @@
                 if (result.success) {
                     showMessage('✅ 保存完了！', false);
                     setTimeout(() => {
-                        nextCase();
                         loadCasesData();
                     }, 800);
                 } else {
