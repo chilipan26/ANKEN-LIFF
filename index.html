@@ -88,6 +88,8 @@
     .date-block:last-child { border-bottom: 0; }
     .date-title { display: flex; align-items: center; justify-content: space-between; gap: 6px; margin-bottom: 6px; }
     .date-title-main { min-width: 0; font-size: 14px; font-weight: 950; line-height: 1.28; color: #0f172a; }
+    .block-discard-btn { flex: 0 0 auto; border: 1px solid #FCA5A5; background: #FEF2F2; color: #DC2626;
+      border-radius: 7px; width: 30px; height: 28px; font-size: 13px; cursor: pointer; }
     .block-fields { display: grid; grid-template-columns: 1fr; gap: 6px; }
 
     .smart-date-row, .smart-time-row { display: grid; grid-template-columns: auto minmax(0, 1fr) 34px; gap: 4px; align-items: center; min-width: 0; }
@@ -241,6 +243,8 @@
           <input type="checkbox" id="registerToCase" checked>
           <label for="registerToCase">この案件を案件情報に登録する</label>
         </div>
+
+        <button type="button" id="discardBtn" onclick="discardCase()" style="width:100%;border:1px solid #FCA5A5;background:#FEF2F2;color:#DC2626;border-radius:10px;padding:10px;font-size:12px;font-weight:900;cursor:pointer;margin-bottom:8px;">🗑 この案件を破棄（重複時など）</button>
       </section>
     </main>
 
@@ -428,8 +432,11 @@
           const wt=p.workTime||'';
           const wtDisp=formatTimeDisplay(wt);
           blocksHtml+=`
-            <article class="date-block" data-pos="${posType}" data-idx="${idx}">
-              <div class="date-title"><div class="date-title-main" data-block-title="${uid}">${escapeHtml(dateDisp)}</div></div>
+            <article class="date-block" data-pos="${posType}" data-idx="${idx}" data-rowindex="${p.rowIndex}">
+              <div class="date-title">
+                <div class="date-title-main" data-block-title="${uid}">${escapeHtml(dateDisp)}</div>
+                <button type="button" class="block-discard-btn" data-discard-row="${p.rowIndex}" title="このセクションを破棄">🗑</button>
+              </div>
               <div class="block-fields">
                 <div class="field full">
                   <div class="smart-date-row">
@@ -448,7 +455,7 @@
                   <input type="hidden" class="field-worktime" value="${escapeHtml(wt)}">
                 </div>
                 <div class="field">
-                  <div class="label-value"><span class="label">単価:</span>
+                  <div class="label-value"><span class="label">入り単価:</span>
                     <button class="copy-value" type="button" data-copy="${withComma(p.unitPrice)}"><span class="copy-icon">⧉</span><span class="copy-text">${withComma(p.unitPrice)}</span></button></div>
                   <input class="edit-input field-price" type="text" inputmode="numeric" placeholder="修正・追加">
                 </div>
@@ -490,6 +497,7 @@
       document.querySelectorAll('.smart-time-display').forEach(el=>{ el.onclick=(e)=>{ e.stopPropagation(); copyText(el.dataset.copy||el.innerText.trim()); }; });
       document.querySelectorAll('[data-date-edit]').forEach(b=>{ b.onclick=(e)=>{ e.stopPropagation(); openCalendar(b.dataset.dateEdit); }; });
       document.querySelectorAll('[data-time-edit]').forEach(b=>{ b.onclick=(e)=>{ e.stopPropagation(); openTimeModal(b.dataset.timeEdit); }; });
+      document.querySelectorAll('[data-discard-row]').forEach(b=>{ b.onclick=(e)=>{ e.stopPropagation(); discardRow(b.dataset.discardRow); }; });
     }
 
     function getBlockByUid(uid){ const [pos,idx]=uid.split('__'); return document.querySelector(`.date-block[data-pos="${pos}"][data-idx="${idx}"]`); }
@@ -545,6 +553,34 @@
         if(result.success){ showMessage('✅ 保存完了！',false); setTimeout(()=>loadCasesData(),800); }
         else{ showMessage('❌ 保存失敗: '+(result.error||'不明'),true); }
       }catch(e){ console.error('Save error:',e); showLoading(false); showMessage('保存エラー: '+e.message,true); }
+    }
+
+    // ===== セクション（日付ブロック）単位の破棄 =====
+    async function discardRow(rowIndex){
+      if(!confirm('このセクションを破棄します。\nよろしいですか？\n（データは残り、次回から表示されません）')) return;
+      try{
+        showLoading(true);
+        const res=await fetch(GAS_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},redirect:'follow',body:JSON.stringify({action:'discardRow',rowIndex:Number(rowIndex)})});
+        const result=await res.json();
+        showLoading(false);
+        if(result.success){ showMessage('🗑 破棄しました',false); setTimeout(()=>loadCasesData(),700); }
+        else{ showMessage('破棄失敗: '+(result.error||'不明'),true); }
+      }catch(e){ showLoading(false); showMessage('破棄エラー: '+e.message,true); }
+    }
+
+    // ===== 案件の破棄 =====
+    async function discardCase(){
+      if(casesData.length===0){ showMessage('対象がありません',true); return; }
+      const c=casesData[currentIndex];
+      if(!confirm(`「${c.caseName}」を破棄します。\nよろしいですか？\n（データは残り、未確認リストから外れます）`)) return;
+      try{
+        showLoading(true);
+        const res=await fetch(GAS_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},redirect:'follow',body:JSON.stringify({action:'discardCase',extId:c.extId})});
+        const result=await res.json();
+        showLoading(false);
+        if(result.success){ showMessage('🗑 破棄しました',false); setTimeout(()=>loadCasesData(),800); }
+        else{ showMessage('破棄失敗: '+(result.error||'不明'),true); }
+      }catch(e){ showLoading(false); showMessage('破棄エラー: '+e.message,true); }
     }
 
     // ===== モーダルのボタン登録 =====
