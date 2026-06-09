@@ -1,1250 +1,572 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>案件確認LIFF</title>
-    <script src="https://d.line-scdn.net/liff/web/sdk/liff.js"></script>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>案件確認LIFF</title>
+  <script src="https://d.line-scdn.net/liff/web/sdk/liff.js"></script>
+  <style>
+    :root {
+      --main: #2563EB; --main-dark: #1D4ED8;
+      --bg: #F8FAFC; --panel: #FFFFFF; --line: #E2E8F0;
+      --text: #111827; --muted: #6B7280;
+      --soft-blue: #EFF6FF; --soft-blue-border: #D6E4FF;
+      --success: #16A34A; --warning: #F97316; --danger: #DC2626; --gray-btn: #E5E7EB;
+      --zebra-a: #FFFFFF; --zebra-b: #EFF6FF;
+      --shadow: 0 2px 10px rgba(15, 23, 42, 0.08);
+      --header-h: 54px; --footer-h: 66px;
+    }
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    html, body { height: 100%; margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Hiragino Sans", "Yu Gothic", "Noto Sans JP", sans-serif;
+      color: var(--text); background: var(--bg); overflow: hidden; }
+    body { width: 100vw; height: 100dvh; }
+    button, input, select, textarea { font: inherit; }
+    button { touch-action: manipulation; }
+    .app { width: 100vw; height: 100dvh; display: flex; flex-direction: column; background: var(--bg); }
 
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: #f5f5f5;
-            overflow: hidden;
-        }
+    .topbar { position: fixed; inset: 0 0 auto 0; height: var(--header-h); z-index: 30;
+      display: grid; grid-template-columns: auto 1fr auto auto; align-items: center; gap: 6px;
+      padding: calc(6px + env(safe-area-inset-top)) 8px 6px 8px;
+      background: rgba(255,255,255,0.96); border-bottom: 1px solid var(--line); box-shadow: var(--shadow); }
+    .count-badge { white-space: nowrap; font-size: 11px; font-weight: 800; color: #fff;
+      background: var(--warning); border-radius: 999px; padding: 6px 8px; line-height: 1; }
+    .case-select { min-width: 0; height: 34px; border: 1px solid var(--line); border-radius: 8px;
+      padding: 0 26px 0 8px; font-size: 12px; font-weight: 800; background: #fff; color: var(--text); }
+    .nav-btn { height: 34px; border: 1px solid var(--line); background: #fff; color: var(--text);
+      border-radius: 8px; padding: 0 9px; font-size: 12px; font-weight: 800; cursor: pointer; }
 
-        .container {
-            display: flex;
-            flex-direction: column;
-            height: 100vh;
-        }
+    .content { display: grid; grid-template-columns: minmax(130px, 40%) minmax(210px, 60%);
+      width: 100%; height: 100dvh; padding-top: calc(var(--header-h) + env(safe-area-inset-top)); overflow: hidden; }
+    .panel { min-width: 0; height: calc(100dvh - var(--header-h) - env(safe-area-inset-top));
+      overflow-y: auto; -webkit-overflow-scrolling: touch; background: var(--panel); }
+    .left-panel { border-right: 1px solid var(--line); padding: 8px 7px 18px; }
+    .right-panel { position: relative; padding: 8px 8px calc(var(--footer-h) + 14px + env(safe-area-inset-bottom)); background: #fbfcff; }
 
-        /* ヘッダー */
-        .header {
-            background: linear-gradient(135deg, #4361EE 0%, #3A52D5 100%);
-            color: white;
-            padding: 12px 16px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-        }
+    .section-title { position: sticky; top: 0; z-index: 5; margin: -8px -7px 8px; padding: 8px 8px 7px;
+      background: rgba(255,255,255,0.96); border-bottom: 1px solid var(--line);
+      font-size: 13px; font-weight: 900; letter-spacing: 0.02em; }
+    .raw-text { margin: 0; white-space: pre-wrap; word-break: break-word; font-size: 11px;
+      line-height: 1.58; letter-spacing: 0.01em; color: #111827; }
 
-        .header-left {
-            font-weight: bold;
-            font-size: 14px;
-        }
+    .common-card, .accordion { background: #fff; border: 1px solid var(--line); border-radius: 10px;
+      box-shadow: 0 1px 4px rgba(15,23,42,0.04); overflow: hidden; margin-bottom: 8px; }
+    .common-head { display: flex; justify-content: space-between; align-items: center; gap: 8px;
+      padding: 7px 8px; background: #fff; border-bottom: 1px solid var(--line); }
+    .common-head h2 { margin: 0; font-size: 13px; line-height: 1.25; }
+    .status-chip { white-space: nowrap; font-size: 10px; color: var(--main); background: var(--soft-blue);
+      border: 1px solid var(--soft-blue-border); border-radius: 999px; padding: 3px 6px; font-weight: 900; }
 
-        .header-center {
-            flex: 1;
-            margin: 0 12px;
-        }
+    .field-list { padding: 7px; display: grid; gap: 6px; }
+    .field { display: grid; grid-template-columns: 1fr; gap: 3px; }
+    .label-value { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 4px; min-width: 0; }
+    .label { color: var(--muted); font-size: 10px; font-weight: 900; white-space: nowrap; }
+    .copy-value { min-width: 0; width: 100%; display: inline-flex; align-items: center; gap: 4px;
+      border: 1px solid #E2E8F0; background: #F8FAFC; color: #111827; border-radius: 7px;
+      padding: 4px 6px; font-size: 10.5px; line-height: 1.25; font-weight: 800; cursor: pointer; text-align: left; overflow: hidden; }
+    .copy-value .copy-icon { flex: 0 0 auto; color: var(--main); font-size: 10px; }
+    .copy-value .copy-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .edit-input, .edit-textarea { width: 100%; border: 1px solid var(--line); border-radius: 7px;
+      background: #fff; color: var(--text); outline: none; padding: 7px 8px; font-size: 13px; line-height: 1.2; }
+    .edit-input { height: 34px; }
+    .edit-textarea { min-height: 44px; resize: vertical; }
+    .edit-input:focus, .edit-textarea:focus { border-color: var(--main); box-shadow: 0 0 0 2px rgba(37,99,235,0.12); }
 
-        .header-center select {
-            width: 100%;
-            padding: 8px 12px;
-            border: none;
-            border-radius: 6px;
-            font-size: 14px;
-        }
+    .accordion-header { width: 100%; border: 0; background: #fff; padding: 9px; display: flex;
+      align-items: center; justify-content: space-between; cursor: pointer; }
+    .position-info { display: flex; align-items: center; gap: 6px; min-width: 0; }
+    .position-name { font-size: 15px; font-weight: 950; color: var(--main); letter-spacing: 0.04em; }
+    .position-count { font-size: 10px; font-weight: 900; color: var(--muted); background: #F1F5F9; border-radius: 999px; padding: 3px 6px; }
+    .chevron { width: 18px; height: 18px; display: grid; place-items: center; color: var(--main); font-size: 14px; transition: transform 0.18s ease; }
+    .accordion.open .chevron { transform: rotate(180deg); }
+    .accordion-body { display: none; border-top: 1px solid var(--line); padding: 0; }
+    .accordion.open .accordion-body { display: block; }
 
-        .header-right {
-            display: flex;
-            gap: 8px;
-        }
+    .date-block { padding: 8px 7px 9px; border-bottom: 1px solid var(--line); }
+    .date-block:nth-child(odd) { background: var(--zebra-a); }
+    .date-block:nth-child(even) { background: var(--zebra-b); }
+    .date-block:last-child { border-bottom: 0; }
+    .date-title { display: flex; align-items: center; justify-content: space-between; gap: 6px; margin-bottom: 6px; }
+    .date-title-main { min-width: 0; font-size: 14px; font-weight: 950; line-height: 1.28; color: #0f172a; }
+    .block-fields { display: grid; grid-template-columns: 1fr; gap: 6px; }
 
-        .header-right button {
-            background: rgba(255,255,255,0.2);
-            color: white;
-            border: none;
-            padding: 6px 12px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 12px;
-        }
+    .smart-date-row, .smart-time-row { display: grid; grid-template-columns: auto minmax(0, 1fr) 34px; gap: 4px; align-items: center; min-width: 0; }
+    .smart-date-display { min-width: 0; display: inline-flex; align-items: center; gap: 4px;
+      border: 1px solid var(--soft-blue-border); background: var(--soft-blue); color: #0f172a;
+      border-radius: 7px; padding: 5px 6px; font-size: 10.5px; line-height: 1.25; font-weight: 900; cursor: pointer; overflow: hidden; }
+    .smart-date-display .date-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .smart-time-display { min-width: 0; display: inline-flex; align-items: center; gap: 4px;
+      border: 1px solid #BFDBFE; background: #FFFFFF; color: #0f172a; border-radius: 7px;
+      padding: 5px 6px; font-size: 10.5px; line-height: 1.25; font-weight: 900; cursor: pointer; overflow: hidden; }
+    .smart-time-display .time-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .calendar-open-btn, .time-open-btn { width: 34px; height: 30px; border-radius: 8px; display: grid;
+      place-items: center; font-size: 15px; font-weight: 900; cursor: pointer; background: #fff; color: var(--main); }
+    .calendar-open-btn { border: 1px solid var(--soft-blue-border); }
+    .time-open-btn { border: 1px solid #BFDBFE; }
 
-        /* メインコンテンツ */
-        .content {
-            display: flex;
-            flex: 1;
-            overflow: hidden;
-        }
+    .toast, .message { position: fixed; left: 50%; bottom: calc(var(--footer-h) + 14px + env(safe-area-inset-bottom));
+      z-index: 80; transform: translateX(-50%) translateY(8px); min-width: 132px; max-width: 80vw;
+      padding: 9px 13px; border-radius: 999px; background: rgba(17,24,39,0.94); color: #fff;
+      font-size: 12px; font-weight: 900; text-align: center; opacity: 0; pointer-events: none;
+      transition: opacity 0.18s ease, transform 0.18s ease; box-shadow: 0 8px 24px rgba(15,23,42,0.24); }
+    .message.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+    .message.error { background: var(--danger); }
 
-        /* 左パネル - 原文 */
-        .left-panel {
-            width: 50%;
-            border-right: 2px solid #ddd;
-            overflow-y: auto;
-            padding: 16px;
-            background: white;
-        }
+    .action-footer { position: fixed; right: 0; bottom: 0; left: 40%; height: calc(var(--footer-h) + env(safe-area-inset-bottom));
+      z-index: 25; display: grid; grid-template-columns: 1fr 0.72fr; gap: 8px;
+      padding: 9px 9px calc(9px + env(safe-area-inset-bottom)); background: rgba(255,255,255,0.96);
+      border-top: 1px solid var(--line); box-shadow: 0 -3px 12px rgba(15,23,42,0.08); }
+    .primary-btn, .secondary-btn { border: 0; border-radius: 10px; font-size: 13px; font-weight: 950; cursor: pointer; min-width: 0; }
+    .primary-btn { background: var(--main); color: #fff; box-shadow: 0 2px 8px rgba(37,99,235,0.28); }
+    .primary-btn:active { background: var(--main-dark); }
+    .secondary-btn { background: var(--gray-btn); color: #374151; }
 
-        .left-panel h3 {
-            color: #4361EE;
-            margin-bottom: 12px;
-            font-size: 14px;
-        }
+    .checkbox-row { display: flex; align-items: center; gap: 8px; background: #fff;
+      border: 1px solid var(--line); border-radius: 10px; padding: 9px; margin-bottom: 8px; }
+    .checkbox-row input { width: 18px; height: 18px; }
+    .checkbox-row label { font-size: 12px; font-weight: 800; }
 
-        .raw-text {
-            background: #f9f9f9;
-            padding: 12px;
-            border-radius: 6px;
-            font-size: 12px;
-            line-height: 1.6;
-            white-space: pre-wrap;
-            word-break: break-word;
-            color: #333;
-        }
+    .modal-backdrop { position: fixed; inset: 0; z-index: 70; display: none; align-items: flex-end;
+      justify-content: center; background: rgba(15,23,42,0.38); padding: 12px; }
+    .modal-backdrop.show { display: flex; }
+    .modal-box { width: min(100%, 430px); max-height: min(88dvh, 620px); display: flex; flex-direction: column;
+      background: #fff; border-radius: 16px; overflow: hidden; box-shadow: 0 20px 52px rgba(15,23,42,0.28); }
+    .modal-head { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 8px;
+      padding: 12px 13px 9px; border-bottom: 1px solid var(--line); }
+    .modal-title-main { font-size: 15px; font-weight: 950; line-height: 1.2; }
+    .modal-title-sub { margin-top: 2px; color: var(--muted); font-size: 11px; line-height: 1.3; font-weight: 700; }
+    .close-btn { width: 34px; height: 34px; border: 1px solid var(--line); border-radius: 999px;
+      background: #fff; color: #475569; font-size: 18px; line-height: 1; cursor: pointer; }
+    .month-nav { display: grid; grid-template-columns: 38px 1fr 38px; align-items: center; gap: 6px;
+      padding: 9px 12px; border-bottom: 1px solid var(--line); background: #F8FAFC; }
+    .month-btn { width: 38px; height: 32px; border: 1px solid var(--line); border-radius: 9px;
+      background: #fff; color: var(--main); font-weight: 950; cursor: pointer; }
+    .month-label { text-align: center; font-size: 14px; font-weight: 950; }
+    .calendar-area { overflow-y: auto; padding: 9px 12px 5px; }
+    .week-grid, .day-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+    .week-cell { text-align: center; color: var(--muted); font-size: 10px; font-weight: 900; padding: 4px 0; }
+    .day-cell { position: relative; min-height: 38px; border: 1px solid transparent; border-radius: 10px;
+      background: #fff; color: var(--text); font-size: 13px; font-weight: 900; cursor: pointer; }
+    .day-cell.empty { visibility: hidden; pointer-events: none; }
+    .day-cell.sunday { color: var(--danger); }
+    .day-cell.saturday { color: var(--main); }
+    .day-cell.selected { background: var(--main); color: #fff; border-color: var(--main); box-shadow: 0 2px 8px rgba(37,99,235,0.22); }
+    .calendar-foot { border-top: 1px solid var(--line); padding: 9px 12px calc(11px + env(safe-area-inset-bottom)); background: #fff; display: grid; gap: 8px; }
+    .preview-box { min-height: 38px; background: var(--soft-blue); border: 1px solid var(--soft-blue-border);
+      border-radius: 10px; padding: 8px 9px; font-size: 12px; line-height: 1.35; font-weight: 900; color: #0f172a; }
+    .modal-actions { display: grid; grid-template-columns: 0.78fr 1fr; gap: 8px; }
+    .time-picker-area { padding: 13px 12px 8px; background: #F8FAFC; }
+    .time-picker-grid { display: grid; grid-template-columns: 1fr 1fr auto 1fr 1fr; gap: 6px; align-items: end; }
+    .time-select-group { display: grid; gap: 4px; min-width: 0; }
+    .time-select-group label { font-size: 10px; color: var(--muted); font-weight: 900; text-align: center; white-space: nowrap; }
+    .time-select { width: 100%; height: 40px; border: 1px solid var(--line); border-radius: 10px;
+      background: #fff; color: var(--text); font-size: 15px; font-weight: 950; text-align: center; padding: 0 6px; outline: none; }
+    .time-wave { height: 40px; display: grid; place-items: center; color: var(--main); font-size: 17px; font-weight: 950; padding: 0 1px; }
+    .ghost-btn { min-height: 40px; border: 1px solid var(--line); border-radius: 10px; background: #fff; color: #475569; font-size: 13px; font-weight: 950; cursor: pointer; }
+    .confirm-btn { min-height: 40px; border: 0; border-radius: 10px; background: var(--main); color: #fff; font-size: 13px; font-weight: 950; cursor: pointer; }
 
-        /* 右パネル - 編集 */
-        .right-panel {
-            width: 50%;
-            overflow-y: auto;
-            padding: 16px;
-            background: #fafafa;
-        }
+    .loading { position: fixed; inset: 0; z-index: 90; display: none; align-items: center; justify-content: center; background: rgba(255,255,255,0.6); }
+    .loading.show { display: flex; }
+    .loading-box { background: #fff; padding: 16px 28px; border-radius: 12px; box-shadow: var(--shadow); font-weight: 900; }
+    .empty-state { padding: 40px 16px; text-align: center; color: var(--muted); font-weight: 800; }
 
-        .right-panel h3 {
-            color: #4361EE;
-            margin-bottom: 12px;
-            font-size: 14px;
-        }
-
-        /* 基本情報 */
-        .form-section {
-            background: white;
-            padding: 12px;
-            border-radius: 6px;
-            margin-bottom: 12px;
-        }
-
-        .form-item {
-            margin-bottom: 12px;
-        }
-
-        .form-item:last-child {
-            margin-bottom: 0;
-        }
-
-        .form-label {
-            font-weight: bold;
-            font-size: 12px;
-            color: #333;
-            margin-bottom: 4px;
-            display: block;
-        }
-
-        .form-value {
-            font-size: 12px;
-            color: #555;
-            padding: 8px;
-            background: #f5f5f5;
-            border-radius: 4px;
-            margin-bottom: 4px;
-            min-height: 24px;
-        }
-
-        .form-input {
-            width: 100%;
-            padding: 8px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            font-size: 12px;
-            font-family: inherit;
-        }
-
-        .form-input:focus {
-            outline: none;
-            border-color: #4361EE;
-            box-shadow: 0 0 4px rgba(67, 97, 238, 0.3);
-        }
-
-        /* アコーディオン */
-        .accordion {
-            margin-bottom: 8px;
-        }
-
-        .accordion-header {
-            background: white;
-            border: 1px solid #ddd;
-            padding: 12px;
-            cursor: pointer;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-radius: 6px;
-            user-select: none;
-            font-weight: bold;
-            font-size: 13px;
-            color: #333;
-            transition: all 0.2s;
-        }
-
-        .accordion-header:active {
-            background: #f0f0f0;
-        }
-
-        .accordion-icon {
-            display: inline-block;
-            transition: transform 0.2s;
-            font-size: 16px;
-        }
-
-        .accordion-header.open .accordion-icon {
-            transform: rotate(180deg);
-        }
-
-        .accordion-content {
-            display: none;
-            background: white;
-            border: 1px solid #ddd;
-            border-top: none;
-            padding: 12px;
-            border-radius: 0 0 6px 6px;
-            margin-bottom: 8px;
-        }
-
-        .accordion-content.open {
-            display: block;
-        }
-
-        .accordion-content.empty {
-            color: #999;
-            font-size: 12px;
-            padding: 16px;
-            text-align: center;
-        }
-
-        /* チェックボックス */
-        .checkbox-section {
-            background: white;
-            padding: 12px;
-            border-radius: 6px;
-            margin: 12px 0;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .checkbox-section input {
-            width: 18px;
-            height: 18px;
-            cursor: pointer;
-        }
-
-        .checkbox-section label {
-            font-size: 12px;
-            cursor: pointer;
-            flex: 1;
-        }
-
-        /* ボタン */
-        .button-section {
-            display: flex;
-            gap: 8px;
-            margin-top: 12px;
-            padding: 0 16px 16px 16px;
-            position: fixed;
-            bottom: 0;
-            right: 0;
-            width: 50%;
-            background: white;
-        }
-
-        .button-section button {
-            flex: 1;
-            padding: 12px;
-            border: none;
-            border-radius: 6px;
-            font-size: 13px;
-            font-weight: bold;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-
-        .button-save {
-            background: #4361EE;
-            color: white;
-        }
-
-        .button-save:active {
-            background: #3A52D5;
-        }
-
-        .button-next {
-            background: #e0e0e0;
-            color: #333;
-        }
-
-        .button-next:active {
-            background: #d0d0d0;
-        }
-
-        /* ローディング */
-        .loading {
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: white;
-            padding: 20px 40px;
-            border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-            display: none;
-            z-index: 1000;
-        }
-
-        .loading.show {
-            display: block;
-        }
-
-        /* メッセージ */
-        .message {
-            position: fixed;
-            top: 60px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: #4CAF50;
-            color: white;
-            padding: 12px 24px;
-            border-radius: 6px;
-            display: none;
-            z-index: 999;
-        }
-
-        .message.show {
-            display: block;
-        }
-
-        .message.error {
-            background: #f44336;
-        }
-
-        /* ===== 追加：日付ブロックのゼブラ色分け ===== */
-        .date-block {
-            border-radius: 8px;
-            padding: 10px;
-            margin-bottom: 10px;
-            border: 1px solid #e2e8f0;
-        }
-        .date-block.zebra-odd {
-            background: #ffffff;
-        }
-        .date-block.zebra-even {
-            background: #EFF6FF;
-        }
-        .date-block-title {
-            font-size: 13px;
-            font-weight: 900;
-            color: #0f172a;
-            margin-bottom: 8px;
-            padding-bottom: 6px;
-            border-bottom: 2px solid #2563EB;
-        }
-
-        /* ===== 追加：日付・稼働時間の表示行 ===== */
-        .smart-row {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }
-        .smart-display {
-            flex: 1;
-            min-width: 0;
-            border: 1px solid #D6E4FF;
-            background: #EFF6FF;
-            color: #0f172a;
-            border-radius: 6px;
-            padding: 7px 8px;
-            font-size: 12px;
-            font-weight: 800;
-            cursor: pointer;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-        }
-        .smart-edit-btn {
-            flex: 0 0 auto;
-            width: 36px;
-            height: 32px;
-            border: 1px solid #D6E4FF;
-            background: #fff;
-            color: #2563EB;
-            border-radius: 6px;
-            font-size: 15px;
-            cursor: pointer;
-        }
-        .copy-value {
-            cursor: pointer;
-        }
-        .accordion-count {
-            font-size: 10px;
-            font-weight: 800;
-            color: #6B7280;
-            background: #F1F5F9;
-            border-radius: 999px;
-            padding: 2px 7px;
-            margin-left: 4px;
-        }
-
-        /* ===== 追加：モーダル ===== */
-        .modal-backdrop {
-            position: fixed;
-            inset: 0;
-            z-index: 2000;
-            display: none;
-            align-items: center;
-            justify-content: center;
-            background: rgba(15, 23, 42, 0.4);
-            padding: 12px;
-        }
-        .modal-backdrop.show { display: flex; }
-        .modal-box {
-            width: min(100%, 420px);
-            max-height: 88vh;
-            background: #fff;
-            border-radius: 14px;
-            overflow: hidden;
-            display: flex;
-            flex-direction: column;
-            box-shadow: 0 20px 50px rgba(15,23,42,0.3);
-        }
-        .modal-head {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 12px 14px;
-            border-bottom: 1px solid #e2e8f0;
-        }
-        .modal-head h3 { margin: 0; font-size: 15px; }
-        .modal-close {
-            border: 1px solid #e2e8f0;
-            background: #fff;
-            border-radius: 999px;
-            width: 32px; height: 32px;
-            font-size: 18px; cursor: pointer;
-        }
-        .modal-body { padding: 12px 14px; overflow-y: auto; }
-        .modal-foot {
-            padding: 12px 14px;
-            border-top: 1px solid #e2e8f0;
-            display: grid;
-            grid-template-columns: 1fr 1.4fr;
-            gap: 8px;
-        }
-        .preview-box {
-            background: #EFF6FF;
-            border: 1px solid #D6E4FF;
-            border-radius: 8px;
-            padding: 10px;
-            font-size: 13px;
-            font-weight: 800;
-            margin-bottom: 10px;
-            min-height: 20px;
-        }
-        .modal-btn {
-            border: 0;
-            border-radius: 8px;
-            padding: 12px;
-            font-size: 14px;
-            font-weight: 800;
-            cursor: pointer;
-        }
-        .modal-btn.ghost { background: #E5E7EB; color: #374151; }
-        .modal-btn.primary { background: #2563EB; color: #fff; }
-
-        /* カレンダー */
-        .cal-nav {
-            display: grid;
-            grid-template-columns: 40px 1fr 40px;
-            align-items: center;
-            margin-bottom: 8px;
-        }
-        .cal-nav button {
-            border: 1px solid #e2e8f0;
-            background: #fff;
-            border-radius: 8px;
-            height: 34px;
-            font-size: 16px;
-            cursor: pointer;
-            color: #2563EB;
-            font-weight: 900;
-        }
-        .cal-month { text-align: center; font-weight: 900; font-size: 15px; }
-        .cal-grid {
-            display: grid;
-            grid-template-columns: repeat(7, 1fr);
-            gap: 4px;
-        }
-        .cal-week {
-            text-align: center;
-            font-size: 11px;
-            font-weight: 800;
-            color: #6B7280;
-            padding: 4px 0;
-        }
-        .cal-day {
-            aspect-ratio: 1;
-            border: 1px solid transparent;
-            border-radius: 8px;
-            background: #fff;
-            font-size: 13px;
-            font-weight: 800;
-            cursor: pointer;
-        }
-        .cal-day.empty { visibility: hidden; }
-        .cal-day.sun { color: #DC2626; }
-        .cal-day.sat { color: #2563EB; }
-        .cal-day.selected {
-            background: #2563EB;
-            color: #fff;
-            border-color: #2563EB;
-        }
-
-        /* 時間ドロップダウン */
-        .time-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr auto 1fr 1fr;
-            gap: 6px;
-            align-items: end;
-        }
-        .time-grid label {
-            font-size: 10px;
-            color: #6B7280;
-            font-weight: 800;
-            text-align: center;
-            display: block;
-            margin-bottom: 3px;
-        }
-        .time-grid select {
-            width: 100%;
-            height: 40px;
-            border: 1px solid #e2e8f0;
-            border-radius: 8px;
-            font-size: 15px;
-            font-weight: 800;
-            text-align: center;
-        }
-        .time-wave {
-            display: grid;
-            place-items: center;
-            height: 40px;
-            font-weight: 900;
-            color: #2563EB;
-        }
-
-        /* ボタンセクション用の余白 */
-        .right-panel-content {
-            padding-bottom: 80px;
-        }
-    </style>
+    @media (min-width: 700px) {
+      :root { --header-h: 58px; --footer-h: 70px; }
+      .topbar { grid-template-columns: auto minmax(260px, 1fr) auto auto; gap: 10px; padding-left: 14px; padding-right: 14px; }
+      .left-panel { padding: 12px 12px 22px; }
+      .right-panel { padding: 12px 14px calc(var(--footer-h) + 18px + env(safe-area-inset-bottom)); }
+      .raw-text { font-size: 12.5px; }
+      .field-list, .block-fields { grid-template-columns: 1fr 1fr; }
+      .field.full { grid-column: 1 / -1; }
+      .action-footer { padding-left: 14px; padding-right: 14px; }
+      .modal-backdrop { align-items: center; }
+    }
+    @media (max-width: 360px) {
+      .topbar { grid-template-columns: auto 1fr auto; }
+      .topbar .nav-btn.prev { display: none; }
+      .content { grid-template-columns: minmax(120px, 39%) minmax(188px, 61%); }
+      .action-footer { left: 39%; }
+    }
+  </style>
 </head>
 <body>
-    <div class="container">
-        <!-- ヘッダー -->
-        <div class="header">
-            <div class="header-left">
-                未処理 <span id="caseCount">0/0</span>
+  <div class="app">
+    <header class="topbar">
+      <div class="count-badge" id="countBadge">未処理 0件</div>
+      <select class="case-select" id="caseSelect" aria-label="案件選択" onchange="handleCaseChange()"></select>
+      <button class="nav-btn prev" type="button" onclick="prevCase()">前へ</button>
+      <button class="nav-btn" type="button" onclick="nextCase()">次へ</button>
+    </header>
+
+    <main class="content">
+      <section class="panel left-panel" aria-label="原文">
+        <h1 class="section-title">原文</h1>
+        <pre class="raw-text" id="rawText">読み込み中...</pre>
+      </section>
+
+      <section class="panel right-panel" aria-label="編集エリア">
+        <section class="common-card">
+          <div class="common-head">
+            <h2>案件共通情報</h2>
+            <span class="status-chip">入力なし＝元値維持</span>
+          </div>
+          <div class="field-list">
+            <div class="field full">
+              <div class="label-value">
+                <span class="label">案件名:</span>
+                <button class="copy-value" type="button" id="copyCaseName"><span class="copy-icon">⧉</span><span class="copy-text"></span></button>
+              </div>
+              <input class="edit-input" type="text" id="caseName" placeholder="修正・追加" autocomplete="off" />
             </div>
-            <div class="header-center">
-                <select id="caseSelect" onchange="handleCaseChange()">
-                    <option value="">案件を選択...</option>
-                </select>
+            <div class="field">
+              <div class="label-value">
+                <span class="label">クライアント:</span>
+                <button class="copy-value" type="button" id="copyClient"><span class="copy-icon">⧉</span><span class="copy-text"></span></button>
+              </div>
+              <input class="edit-input" type="text" id="client" placeholder="修正・追加" autocomplete="off" />
             </div>
-            <div class="header-right">
-                <button onclick="prevCase()">◀ 前へ</button>
-                <button onclick="nextCase()">次へ ▶</button>
+            <div class="field">
+              <div class="label-value">
+                <span class="label">担当者:</span>
+                <button class="copy-value" type="button" id="copyContact"><span class="copy-icon">⧉</span><span class="copy-text"></span></button>
+              </div>
+              <input class="edit-input" type="text" id="contact" placeholder="修正・追加" autocomplete="off" />
             </div>
+          </div>
+        </section>
+
+        <div id="positionAccordions"></div>
+
+        <div class="checkbox-row">
+          <input type="checkbox" id="registerToCase" checked>
+          <label for="registerToCase">この案件を案件情報に登録する</label>
         </div>
+      </section>
+    </main>
 
-        <!-- メインコンテンツ -->
-        <div class="content">
-            <!-- 左パネル: 原文 -->
-            <div class="left-panel">
-                <h3>【原文】</h3>
-                <div class="raw-text" id="rawText">案件を選択してください</div>
-            </div>
+    <footer class="action-footer">
+      <button class="primary-btn" type="button" onclick="saveData()">保存して確認済に</button>
+      <button class="secondary-btn" type="button" onclick="nextCase()">次へ</button>
+    </footer>
 
-            <!-- 右パネル: 編集 -->
-            <div class="right-panel">
-                <h3>【ポジション別編集】</h3>
-                <div class="right-panel-content">
-                    <!-- 案件共通情報（全て編集可） -->
-                    <div class="form-section" id="basicInfo">
-                        <div class="form-item">
-                            <label class="form-label">案件名</label>
-                            <div class="form-value" id="caseNameDisplay"></div>
-                            <input type="text" id="caseName" class="form-input" placeholder="修正・追加">
-                        </div>
-                        <div class="form-item">
-                            <label class="form-label">クライアント</label>
-                            <div class="form-value" id="clientDisplay"></div>
-                            <input type="text" id="client" class="form-input" placeholder="修正・追加">
-                        </div>
-                        <div class="form-item">
-                            <label class="form-label">担当者</label>
-                            <div class="form-value" id="contactDisplay"></div>
-                            <input type="text" id="contact" class="form-input" placeholder="修正・追加">
-                        </div>
-                    </div>
-
-                    <!-- ポジション別アコーディオン -->
-                    <div id="positionAccordions"></div>
-
-                    <!-- チェックボックス -->
-                    <div class="checkbox-section">
-                        <input type="checkbox" id="registerToCase" checked>
-                        <label for="registerToCase">この案件を案件情報に登録する</label>
-                    </div>
-                </div>
-
-                <!-- ボタン（固定） -->
-                <div class="button-section">
-                    <button class="button-save" onclick="saveData()">保存して確認済に</button>
-                    <button class="button-next" onclick="nextCase()">次へ ▶</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- ローディング -->
-    <div class="loading" id="loading">処理中...</div>
-
-    <!-- メッセージ -->
-    <div class="message" id="message"></div>
+    <div id="message" class="message" role="status"></div>
+    <div id="loading" class="loading"><div class="loading-box">処理中...</div></div>
 
     <!-- カレンダーモーダル -->
-    <div class="modal-backdrop" id="calBackdrop">
-        <div class="modal-box">
-            <div class="modal-head">
-                <h3>日付を修正</h3>
-                <button class="modal-close" id="calClose">×</button>
-            </div>
-            <div class="modal-body">
-                <div class="cal-nav">
-                    <button id="calPrev">‹</button>
-                    <div class="cal-month" id="calMonth"></div>
-                    <button id="calNext">›</button>
-                </div>
-                <div class="cal-grid">
-                    <div class="cal-week">日</div><div class="cal-week">月</div><div class="cal-week">火</div>
-                    <div class="cal-week">水</div><div class="cal-week">木</div><div class="cal-week">金</div><div class="cal-week">土</div>
-                </div>
-                <div class="cal-grid" id="calGrid" style="margin-top:4px;"></div>
-            </div>
-            <div class="modal-body" style="padding-top:0;">
-                <div class="preview-box" id="calPreview">選択中：未設定</div>
-            </div>
-            <div class="modal-foot">
-                <button class="modal-btn ghost" id="calClear">全解除</button>
-                <button class="modal-btn primary" id="calConfirm">確定</button>
-            </div>
+    <div id="calendarBackdrop" class="modal-backdrop">
+      <section class="modal-box" role="dialog" aria-modal="true">
+        <header class="modal-head">
+          <div>
+            <div class="modal-title-main">日付を修正</div>
+            <div class="modal-title-sub">タップで選択/解除。連日・飛び石は自動判定</div>
+          </div>
+          <button id="calendarClose" class="close-btn" type="button">×</button>
+        </header>
+        <div class="month-nav">
+          <button id="prevMonth" class="month-btn" type="button">‹</button>
+          <div id="monthLabel" class="month-label"></div>
+          <button id="nextMonth" class="month-btn" type="button">›</button>
         </div>
+        <div class="calendar-area">
+          <div class="week-grid">
+            <div class="week-cell">日</div><div class="week-cell">月</div><div class="week-cell">火</div>
+            <div class="week-cell">水</div><div class="week-cell">木</div><div class="week-cell">金</div><div class="week-cell">土</div>
+          </div>
+          <div id="dayGrid" class="day-grid"></div>
+        </div>
+        <footer class="calendar-foot">
+          <div id="datePreview" class="preview-box">選択中：未選択</div>
+          <div class="modal-actions">
+            <button id="clearDates" class="ghost-btn" type="button">全解除</button>
+            <button id="confirmDates" class="confirm-btn" type="button">確定</button>
+          </div>
+        </footer>
+      </section>
     </div>
 
     <!-- 稼働時間モーダル -->
-    <div class="modal-backdrop" id="timeBackdrop">
-        <div class="modal-box">
-            <div class="modal-head">
-                <h3>稼働時間を修正</h3>
-                <button class="modal-close" id="timeClose">×</button>
-            </div>
-            <div class="modal-body">
-                <div class="time-grid">
-                    <div><label>開始(時)</label><select id="startHour"></select></div>
-                    <div><label>開始(分)</label><select id="startMinute"></select></div>
-                    <div class="time-wave">〜</div>
-                    <div><label>終了(時)</label><select id="endHour"></select></div>
-                    <div><label>終了(分)</label><select id="endMinute"></select></div>
-                </div>
-                <div class="preview-box" id="timePreview" style="margin-top:12px;">選択中：未設定</div>
-            </div>
-            <div class="modal-foot">
-                <button class="modal-btn ghost" id="timeCancel">キャンセル</button>
-                <button class="modal-btn primary" id="timeConfirm">確定</button>
-            </div>
+    <div id="timeBackdrop" class="modal-backdrop">
+      <section class="modal-box" role="dialog" aria-modal="true">
+        <header class="modal-head">
+          <div>
+            <div class="modal-title-main">稼働時間を修正</div>
+            <div class="modal-title-sub">分は00/15/30/45のみ</div>
+          </div>
+          <button id="timeClose" class="close-btn" type="button">×</button>
+        </header>
+        <div class="time-picker-area">
+          <div class="time-picker-grid">
+            <div class="time-select-group"><label>開始(時)</label><select id="startHour" class="time-select"></select></div>
+            <div class="time-select-group"><label>開始(分)</label><select id="startMinute" class="time-select"></select></div>
+            <div class="time-wave">〜</div>
+            <div class="time-select-group"><label>終了(時)</label><select id="endHour" class="time-select"></select></div>
+            <div class="time-select-group"><label>終了(分)</label><select id="endMinute" class="time-select"></select></div>
+          </div>
         </div>
+        <footer class="calendar-foot">
+          <div id="timePreview" class="preview-box">選択中：未選択</div>
+          <div class="modal-actions">
+            <button id="cancelTime" class="ghost-btn" type="button">キャンセル</button>
+            <button id="confirmTime" class="confirm-btn" type="button">確定</button>
+          </div>
+        </footer>
+      </section>
     </div>
-
-    <script>
-        let casesData = [];
-        let currentIndex = 0;
-        const GAS_URL = 'https://script.google.com/macros/s/AKfycbwrpujZnwOw98ieBUmX_D_sOYfS9QjgII_jHW2dGt3tZ9poo3rl9PHpp7Tn3baAYn6D/exec';
-
-        const dayNames = ['日','月','火','水','木','金','土'];
-
-        function toDate(key) {
-            if (!key) return null;
-            const s = String(key).slice(0, 10);
-            const [y, m, d] = s.split('-').map(Number);
-            if (!y || !m || !d) return null;
-            return new Date(y, m - 1, d);
-        }
-        function toKey(date) {
-            const y = date.getFullYear();
-            const m = String(date.getMonth() + 1).padStart(2, '0');
-            const d = String(date.getDate()).padStart(2, '0');
-            return `${y}-${m}-${d}`;
-        }
-        function parseDateArray(value) {
-            if (!value) return [];
-            return String(value).split(',')
-                .map(s => s.trim()).filter(Boolean)
-                .map(s => { const dt = toDate(s); return dt ? toKey(dt) : null; })
-                .filter(Boolean);
-        }
-        function formatDateJp(key) {
-            const date = toDate(key);
-            if (!date) return key;
-            const yy = String(date.getFullYear()).slice(-2);
-            const mm = String(date.getMonth() + 1).padStart(2, '0');
-            const dd = String(date.getDate()).padStart(2, '0');
-            return `${yy}/${mm}/${dd}（${dayNames[date.getDay()]}）`;
-        }
-        function uniqueSorted(keys) {
-            return [...new Set(keys)].sort((a, b) => toDate(a) - toDate(b));
-        }
-        function isConsecutive(keys) {
-            if (keys.length <= 1) return false;
-            const s = uniqueSorted(keys);
-            for (let i = 1; i < s.length; i++) {
-                if (Math.round((toDate(s[i]) - toDate(s[i-1])) / 86400000) !== 1) return false;
-            }
-            return true;
-        }
-        function displayDateArray(keys) {
-            const s = uniqueSorted(keys);
-            if (s.length === 0) return '未設定';
-            if (s.length === 1) return formatDateJp(s[0]);
-            if (isConsecutive(s)) return `${formatDateJp(s[0])}〜${formatDateJp(s[s.length-1])} 連続${s.length}日`;
-            return `${s.map(formatDateJp).join(', ')} 飛び石${s.length}日`;
-        }
-
-        function parseTimeRange(value) {
-            const m = /(\d{1,2}):(\d{2})\s*[~〜]\s*(\d{1,2}):(\d{2})/.exec(value || '');
-            if (!m) return { sh:'09', sm:'00', eh:'18', em:'00' };
-            return { sh: m[1].padStart(2,'0'), sm: m[2], eh: m[3].padStart(2,'0'), em: m[4] };
-        }
-        function formatTimeStorage(p) { return `${p.sh}:${p.sm}~${p.eh}:${p.em}`; }
-        function formatTimeDisplay(value) {
-            if (!value) return '未設定';
-            const p = parseTimeRange(value);
-            return `${p.sh}:${p.sm} 〜 ${p.eh}:${p.em}`;
-        }
-
-        function withComma(n) {
-            const num = parseInt(String(n).replace(/[^0-9-]/g, ''), 10);
-            if (isNaN(num)) return '0';
-            return num.toLocaleString('ja-JP');
-        }
-        function escapeAttr(s) { return String(s).replace(/"/g, '&quot;'); }
-
-        async function copyText(text) {
-            try {
-                if (navigator.clipboard && window.isSecureContext) {
-                    await navigator.clipboard.writeText(text);
-                } else {
-                    const t = document.createElement('textarea');
-                    t.value = text; t.style.position = 'fixed'; t.style.left = '-9999px';
-                    document.body.appendChild(t); t.select();
-                    document.execCommand('copy'); document.body.removeChild(t);
-                }
-                showMessage('コピーしました', false);
-            } catch(e) { showMessage('コピーできませんでした', true); }
-        }
-        function setupCopyValue(elementId, value) {
-            const el = document.getElementById(elementId);
-            if (!el) return;
-            el.textContent = value;
-            el.classList.add('copy-value');
-            el.dataset.copy = value;
-            el.onclick = () => copyText(value);
-        }
-
-        function bindBlockEvents() {
-            document.querySelectorAll('#positionAccordions .copy-value').forEach(el => {
-                el.onclick = (e) => { e.stopPropagation(); copyText(el.dataset.copy || el.textContent.trim()); };
-            });
-            document.querySelectorAll('#positionAccordions .smart-display').forEach(el => {
-                el.onclick = (e) => { e.stopPropagation(); copyText(el.dataset.copy || el.textContent.trim()); };
-            });
-            document.querySelectorAll('[data-date-edit]').forEach(btn => {
-                btn.onclick = (e) => { e.stopPropagation(); openCalendar(btn.dataset.dateEdit); };
-            });
-            document.querySelectorAll('[data-time-edit]').forEach(btn => {
-                btn.onclick = (e) => { e.stopPropagation(); openTimeModal(btn.dataset.timeEdit); };
-            });
-        }
-
-        // ===== カレンダーモーダル =====
-        let calActiveUid = null;
-        let calSelected = new Set();
-        let calYear = 2025, calMonth = 5;
-
-        function getBlockByUid(uid) {
-            const i = uid.lastIndexOf('-');
-            const pos = uid.slice(0, i);
-            const idx = uid.slice(i + 1);
-            return document.querySelector(`.date-block[data-pos="${pos}"][data-idx="${idx}"]`);
-        }
-        function openCalendar(uid) {
-            calActiveUid = uid;
-            const block = getBlockByUid(uid);
-            const hidden = block.querySelector('.field-date');
-            calSelected = new Set(parseDateArray(hidden.value));
-            const first = uniqueSorted([...calSelected])[0] || toKey(new Date());
-            const d = toDate(first);
-            calYear = d.getFullYear(); calMonth = d.getMonth();
-            renderCalendar(); updateCalPreview();
-            document.getElementById('calBackdrop').classList.add('show');
-        }
-        function closeCalendar() {
-            document.getElementById('calBackdrop').classList.remove('show');
-            calActiveUid = null; calSelected = new Set();
-        }
-        function renderCalendar() {
-            document.getElementById('calMonth').textContent = `${calYear}年${calMonth+1}月`;
-            const first = new Date(calYear, calMonth, 1);
-            const last = new Date(calYear, calMonth+1, 0);
-            const grid = document.getElementById('calGrid');
-            grid.innerHTML = '';
-            for (let i = 0; i < first.getDay(); i++) {
-                const e = document.createElement('div');
-                e.className = 'cal-day empty'; grid.appendChild(e);
-            }
-            for (let day = 1; day <= last.getDate(); day++) {
-                const date = new Date(calYear, calMonth, day);
-                const key = toKey(date);
-                const btn = document.createElement('div');
-                btn.className = 'cal-day';
-                btn.textContent = day;
-                if (date.getDay() === 0) btn.classList.add('sun');
-                if (date.getDay() === 6) btn.classList.add('sat');
-                if (calSelected.has(key)) btn.classList.add('selected');
-                btn.onclick = () => {
-                    if (calSelected.has(key)) calSelected.delete(key); else calSelected.add(key);
-                    renderCalendar(); updateCalPreview();
-                };
-                grid.appendChild(btn);
-            }
-        }
-        function updateCalPreview() {
-            document.getElementById('calPreview').textContent = '選択中：' + displayDateArray([...calSelected]);
-        }
-
-        // ===== 稼働時間モーダル =====
-        let timeActiveUid = null;
-        function openTimeModal(uid) {
-            timeActiveUid = uid;
-            const block = getBlockByUid(uid);
-            const hidden = block.querySelector('.field-worktime');
-            const p = parseTimeRange(hidden.value);
-            document.getElementById('startHour').value = p.sh;
-            document.getElementById('startMinute').value = p.sm;
-            document.getElementById('endHour').value = p.eh;
-            document.getElementById('endMinute').value = p.em;
-            updateTimePreview();
-            document.getElementById('timeBackdrop').classList.add('show');
-        }
-        function closeTimeModal() {
-            document.getElementById('timeBackdrop').classList.remove('show');
-            timeActiveUid = null;
-        }
-        function getTimeParts() {
-            return {
-                sh: document.getElementById('startHour').value,
-                sm: document.getElementById('startMinute').value,
-                eh: document.getElementById('endHour').value,
-                em: document.getElementById('endMinute').value
-            };
-        }
-        function updateTimePreview() {
-            document.getElementById('timePreview').textContent = '選択中：' + formatTimeDisplay(formatTimeStorage(getTimeParts()));
-        }
-        function fillTimeOptions() {
-            const hours = Array.from({length:24}, (_,i)=>String(i).padStart(2,'0'));
-            const mins = ['00','15','30','45'];
-            ['startHour','endHour'].forEach(id => {
-                document.getElementById(id).innerHTML = hours.map(v=>`<option value="${v}">${v}</option>`).join('');
-            });
-            ['startMinute','endMinute'].forEach(id => {
-                document.getElementById(id).innerHTML = mins.map(v=>`<option value="${v}">${v}</option>`).join('');
-            });
-        }
-
-        // LIFF 初期化
-        async function initLiff() {
-            try {
-                await liff.init({ liffId: '2010162762-VhyEkMPy' });
-                if (liff.isLoggedIn()) {
-                    loadCasesData();
-                } else {
-                    liff.login();
-                }
-            } catch (error) {
-                console.error('LIFF init error:', error);
-                // LIFF初期化に失敗してもデータ取得は試みる（ブラウザテスト用）
-                loadCasesData();
-            }
-        }
-
-        // GAS からデータ取得（★ POST + CORS対策）
-        async function loadCasesData() {
-            try {
-                showLoading(true);
-                const response = await fetch(GAS_URL, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-                    redirect: 'follow',
-                    body: JSON.stringify({ action: 'getUnconfirmedCases' })
-                });
-                const data = await response.json();
-                
-                casesData = data.cases || [];
-                currentIndex = 0;
-
-                if (casesData.length === 0) {
-                    showLoading(false);
-                    showMessage('未確認案件がありません', false);
-                    return;
-                }
-
-                populateCaseSelect();
-                displayCase(0);
-                showLoading(false);
-            } catch (error) {
-                console.error('Load error:', error);
-                showMessage('データ読み込みエラー: ' + error.message, true);
-                showLoading(false);
-            }
-        }
-
-        // プルダウンに案件を追加
-        function populateCaseSelect() {
-            const select = document.getElementById('caseSelect');
-            select.innerHTML = '';
-
-            casesData.forEach((item, index) => {
-                const option = document.createElement('option');
-                option.value = index;
-                option.textContent = `${index + 1}. ${item.caseName}`;
-                select.appendChild(option);
-            });
-
-            if (casesData.length > 0) {
-                select.value = currentIndex;
-            }
-        }
-
-        // 案件を表示
-        function displayCase(index) {
-            if (index < 0 || index >= casesData.length) return;
-
-            currentIndex = index;
-            const caseData = casesData[index];
-
-            // ヘッダー更新
-            document.getElementById('caseCount').textContent = `${index + 1}/${casesData.length}`;
-            document.getElementById('caseSelect').value = index;
-
-            // 原文表示
-            document.getElementById('rawText').textContent = caseData.rawText || '原文なし';
-
-            // 基本情報表示（元の値・タップでコピー）
-            setupCopyValue('caseNameDisplay', caseData.caseName || '');
-            setupCopyValue('clientDisplay', caseData.client || '');
-            setupCopyValue('contactDisplay', caseData.contact || '');
-
-            // 入力フィールドは空欄スタート（入力なし＝元の値維持）
-            document.getElementById('caseName').value = '';
-            document.getElementById('client').value = '';
-            document.getElementById('contact').value = '';
-
-            // ポジション別アコーディオン表示
-            displayPositionAccordions(caseData.positions || {});
-
-            // チェックボックス
-            document.getElementById('registerToCase').checked = true;
-        }
-
-        // ポジション別アコーディオン生成（★ positions はオブジェクト形式）
-        function displayPositionAccordions(positions) {
-            const container = document.getElementById('positionAccordions');
-            container.innerHTML = '';
-
-            // データのあるポジションのみ表示（D/AD/STを優先順で、その他は後ろ）
-            const order = ['D', 'AD', 'ST'];
-            const keys = Object.keys(positions).filter(k => (positions[k] || []).length > 0);
-            keys.sort((a, b) => {
-                const ia = order.indexOf(a), ib = order.indexOf(b);
-                return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib);
-            });
-
-            keys.forEach(posType => {
-                const posDataArray = positions[posType];
-
-                const accordion = document.createElement('div');
-                accordion.className = 'accordion open';
-
-                const header = document.createElement('div');
-                header.className = 'accordion-header open';
-                header.innerHTML = `${posType} <span class="accordion-count">${posDataArray.length}条件</span> <span class="accordion-icon">▼</span>`;
-                header.onclick = () => toggleAccordion(header);
-
-                const content = document.createElement('div');
-                content.className = 'accordion-content open';
-
-                let html = '';
-                posDataArray.forEach((posData, idx) => {
-                    const zebra = (idx % 2 === 0) ? 'zebra-odd' : 'zebra-even';
-                    const uid = `${posType}-${idx}`;
-
-                    // 日付配列を準備（カンマ区切り文字列 or 単一日付を配列化）
-                    const dateArr = parseDateArray(posData.date);
-                    const dateDisp = displayDateArray(dateArr);
-
-                    // 稼働時間
-                    const wt = posData.workTime || '';
-                    const wtDisp = formatTimeDisplay(wt);
-
-                    html += `
-                        <div class="date-block ${zebra}" data-pos="${posType}" data-idx="${idx}">
-                            <div class="date-block-title" data-block-title="${uid}">${dateDisp}</div>
-
-                            <div class="form-item">
-                                <label class="form-label">日付</label>
-                                <div class="smart-row">
-                                    <div class="smart-display" data-date-display="${uid}" data-copy="${dateDisp}">${dateDisp}</div>
-                                    <button type="button" class="smart-edit-btn" data-date-edit="${uid}">📅</button>
-                                </div>
-                                <input type="hidden" class="field-date" value="${dateArr.join(',')}">
-                            </div>
-
-                            <div class="form-item">
-                                <label class="form-label">稼働時間</label>
-                                <div class="smart-row">
-                                    <div class="smart-display" data-time-display="${uid}" data-copy="${wtDisp}">${wtDisp}</div>
-                                    <button type="button" class="smart-edit-btn" data-time-edit="${uid}">🕐</button>
-                                </div>
-                                <input type="hidden" class="field-worktime" value="${wt}">
-                            </div>
-
-                            <div class="form-item">
-                                <label class="form-label">単価</label>
-                                <div class="form-value copy-value" data-copy="${withComma(posData.unitPrice)}">¥${withComma(posData.unitPrice)}</div>
-                                <input type="number" class="form-input field-price" placeholder="修正・追加">
-                            </div>
-
-                            <div class="form-item">
-                                <label class="form-label">交通費</label>
-                                <div class="form-value copy-value" data-copy="${withComma(posData.transport)}">¥${withComma(posData.transport)}</div>
-                                <input type="number" class="form-input field-transport" placeholder="修正・追加">
-                            </div>
-
-                            <div class="form-item">
-                                <label class="form-label">食費</label>
-                                <div class="form-value copy-value" data-copy="${withComma(posData.meal)}">¥${withComma(posData.meal)}</div>
-                                <input type="number" class="form-input field-meal" placeholder="修正・追加">
-                            </div>
-
-                            <div class="form-item">
-                                <label class="form-label">特記</label>
-                                <div class="form-value copy-value" data-copy="${escapeAttr(posData.remark || '')}">${posData.remark || ''}</div>
-                                <input type="text" class="form-input field-remark" placeholder="修正・追加">
-                            </div>
-                        </div>
-                    `;
-                });
-                content.innerHTML = html;
-
-                accordion.appendChild(header);
-                accordion.appendChild(content);
-                container.appendChild(accordion);
-            });
-
-            // イベント付与
-            bindBlockEvents();
-        }
-
-        // アコーディオン切り替え
-        function toggleAccordion(header) {
-            header.classList.toggle('open');
-            header.nextElementSibling.classList.toggle('open');
-        }
-
-        // ケース選択変更
-        function handleCaseChange() {
-            const index = parseInt(document.getElementById('caseSelect').value);
-            displayCase(index);
-        }
-
-        // 前へ
-        function prevCase() {
-            if (currentIndex > 0) {
-                displayCase(currentIndex - 1);
-            }
-        }
-
-        // 次へ
-        function nextCase() {
-            if (currentIndex < casesData.length - 1) {
-                displayCase(currentIndex + 1);
-            }
-        }
-
-        // データ保存（★ POST + CORS対策）
-        async function saveData() {
-            try {
-                showLoading(true);
-
-                const caseData = casesData[currentIndex];
-                // 入力なし＝元の値維持
-                const cnInput = document.getElementById('caseName').value.trim();
-                const clInput = document.getElementById('client').value.trim();
-                const ctInput = document.getElementById('contact').value.trim();
-
-                const updatedData = {
-                    extId: caseData.extId,
-                    caseName: cnInput || caseData.caseName || '',
-                    client: clInput || caseData.client || '',
-                    contact: ctInput || caseData.contact || '',
-                    registerToCase: document.getElementById('registerToCase').checked,
-                    positions: {}
-                };
-
-                const blocks = document.querySelectorAll('#positionAccordions [data-pos]');
-                blocks.forEach(block => {
-                    const posType = block.getAttribute('data-pos');
-                    if (!updatedData.positions[posType]) updatedData.positions[posType] = [];
-
-                    const priceInput = block.querySelector('.field-price').value.trim();
-                    const transInput = block.querySelector('.field-transport').value.trim();
-                    const mealInput = block.querySelector('.field-meal').value.trim();
-                    const remarkInput = block.querySelector('.field-remark').value.trim();
-
-                    // 元の値（data-copyから数値復元）
-                    const origPrice = block.querySelectorAll('.copy-value')[0]?.dataset.copy || '0';
-                    const origTrans = block.querySelectorAll('.copy-value')[1]?.dataset.copy || '0';
-                    const origMeal  = block.querySelectorAll('.copy-value')[2]?.dataset.copy || '0';
-                    const origRemark= block.querySelectorAll('.copy-value')[3]?.dataset.copy || '';
-
-                    const numClean = (s) => parseInt(String(s).replace(/[^0-9-]/g,''),10) || 0;
-
-                    updatedData.positions[posType].push({
-                        // 日付は隠しフィールド（カンマ区切り文字列）
-                        date: block.querySelector('.field-date').value || '',
-                        workTime: block.querySelector('.field-worktime').value || '',
-                        unitPrice: priceInput !== '' ? numClean(priceInput) : numClean(origPrice),
-                        transport: transInput !== '' ? numClean(transInput) : numClean(origTrans),
-                        meal: mealInput !== '' ? numClean(mealInput) : numClean(origMeal),
-                        remark: remarkInput !== '' ? remarkInput : origRemark
-                    });
-                });
-
-                const response = await fetch(GAS_URL, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-                    redirect: 'follow',
-                    body: JSON.stringify({ action: 'saveCaseConfirmation', data: updatedData })
-                });
-
-                const result = await response.json();
-
-                if (result.success) {
-                    showMessage('✅ 保存完了！', false);
-                    setTimeout(() => { loadCasesData(); }, 800);
-                } else {
-                    showMessage('❌ 保存失敗: ' + (result.error || '不明なエラー'), true);
-                }
-                showLoading(false);
-            } catch (error) {
-                console.error('Save error:', error);
-                showMessage('保存エラー: ' + error.message, true);
-                showLoading(false);
-            }
-        }
-
-        // UI 関数
-        function showLoading(show) {
-            document.getElementById('loading').classList.toggle('show', show);
-        }
-
-        function showMessage(text, isError) {
-            const msg = document.getElementById('message');
-            msg.textContent = text;
-            msg.classList.toggle('error', isError);
-            msg.classList.add('show');
-
-            setTimeout(() => {
-                msg.classList.remove('show');
-            }, 3000);
-        }
-
-        // モーダル関連イベント登録
-        function setupModals() {
-            fillTimeOptions();
-
-            // カレンダー
-            document.getElementById('calPrev').onclick = () => {
-                calMonth--; if (calMonth < 0) { calMonth = 11; calYear--; } renderCalendar();
-            };
-            document.getElementById('calNext').onclick = () => {
-                calMonth++; if (calMonth > 11) { calMonth = 0; calYear++; } renderCalendar();
-            };
-            document.getElementById('calClear').onclick = () => {
-                calSelected.clear(); renderCalendar(); updateCalPreview();
-            };
-            document.getElementById('calClose').onclick = closeCalendar;
-            document.getElementById('calBackdrop').onclick = (e) => {
-                if (e.target === document.getElementById('calBackdrop')) closeCalendar();
-            };
-            document.getElementById('calConfirm').onclick = () => {
-                if (!calActiveUid) return;
-                const arr = uniqueSorted([...calSelected]);
-                const block = getBlockByUid(calActiveUid);
-                block.querySelector('.field-date').value = arr.join(',');
-                const disp = displayDateArray(arr);
-                const dispEl = block.querySelector('.smart-display[data-date-display]');
-                dispEl.textContent = disp;
-                dispEl.dataset.copy = disp;
-                block.querySelector('[data-block-title]').textContent = disp;
-                closeCalendar();
-                showMessage('日付を反映しました', false);
-            };
-
-            // 稼働時間
-            ['startHour','startMinute','endHour','endMinute'].forEach(id => {
-                document.getElementById(id).addEventListener('change', updateTimePreview);
-            });
-            document.getElementById('timeClose').onclick = closeTimeModal;
-            document.getElementById('timeCancel').onclick = closeTimeModal;
-            document.getElementById('timeBackdrop').onclick = (e) => {
-                if (e.target === document.getElementById('timeBackdrop')) closeTimeModal();
-            };
-            document.getElementById('timeConfirm').onclick = () => {
-                if (!timeActiveUid) return;
-                const val = formatTimeStorage(getTimeParts());
-                const block = getBlockByUid(timeActiveUid);
-                block.querySelector('.field-worktime').value = val;
-                const disp = formatTimeDisplay(val);
-                const dispEl = block.querySelector('.smart-display[data-time-display]');
-                dispEl.textContent = disp;
-                dispEl.dataset.copy = disp;
-                closeTimeModal();
-                showMessage('稼働時間を反映しました', false);
-            };
-        }
-
-        // ページ読み込み
-        window.onload = () => {
-            setupModals();
-            initLiff();
-        };
-    </script>
+  </div>
+
+  <script>
+    const GAS_URL = 'https://script.google.com/macros/s/AKfycbwrpujZnwOw98ieBUmX_D_sOYfS9QjgII_jHW2dGt3tZ9poo3rl9PHpp7Tn3baAYn6D/exec';
+    const LIFF_ID = '2010162762-VhyEkMPy';
+    const dayNames = ["日","月","火","水","木","金","土"];
+
+    let casesData = [];
+    let currentIndex = 0;
+
+    // ===== 日付ユーティリティ =====
+    function toDate(key){ if(!key) return null; const s=String(key).slice(0,10); const [y,m,d]=s.split('-').map(Number); if(!y||!m||!d) return null; return new Date(y,m-1,d); }
+    function toKey(date){ const y=date.getFullYear(); const m=String(date.getMonth()+1).padStart(2,'0'); const d=String(date.getDate()).padStart(2,'0'); return `${y}-${m}-${d}`; }
+    function parseDateArray(value){ if(!value) return []; return String(value).split(',').map(s=>s.trim()).filter(Boolean).map(s=>{const dt=toDate(s); return dt?toKey(dt):null;}).filter(Boolean); }
+    function formatDateJp(key){ const date=toDate(key); if(!date) return key; const yy=String(date.getFullYear()).slice(-2); const mm=String(date.getMonth()+1).padStart(2,'0'); const dd=String(date.getDate()).padStart(2,'0'); return `${yy}/${mm}/${dd}（${dayNames[date.getDay()]}）`; }
+    function uniqueSorted(keys){ return [...new Set(keys)].sort((a,b)=>toDate(a)-toDate(b)); }
+    function isConsecutive(keys){ if(keys.length<=1) return false; const s=uniqueSorted(keys); for(let i=1;i<s.length;i++){ if(Math.round((toDate(s[i])-toDate(s[i-1]))/86400000)!==1) return false; } return true; }
+    function displayDateArray(keys){ const s=uniqueSorted(keys); if(s.length===0) return '未設定'; if(s.length===1) return formatDateJp(s[0]); if(isConsecutive(s)) return `${formatDateJp(s[0])}〜${formatDateJp(s[s.length-1])} 連続${s.length}日`; return `${s.map(formatDateJp).join(', ')} 飛び石${s.length}日`; }
+
+    // ===== 時間ユーティリティ =====
+    function parseTimeRange(value){ const m=/(\d{1,2}):(\d{2})\s*[~〜]\s*(\d{1,2}):(\d{2})/.exec(value||''); if(!m) return {sh:'09',sm:'00',eh:'18',em:'00'}; return {sh:m[1].padStart(2,'0'),sm:m[2],eh:m[3].padStart(2,'0'),em:m[4]}; }
+    function formatTimeStorage(p){ return `${p.sh}:${p.sm}~${p.eh}:${p.em}`; }
+    function formatTimeDisplay(value){ if(!value) return '未設定'; const p=parseTimeRange(value); return `${p.sh}:${p.sm} 〜 ${p.eh}:${p.em}`; }
+
+    // ===== 数値・文字 =====
+    function withComma(n){ const num=parseInt(String(n).replace(/[^0-9-]/g,''),10); if(isNaN(num)) return '0'; return num.toLocaleString('ja-JP'); }
+    function escapeHtml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+    // ===== コピー・トースト =====
+    let toastTimer=null;
+    function showMessage(text,isError){ const el=document.getElementById('message'); el.textContent=text; el.classList.toggle('error',!!isError); el.classList.add('show'); clearTimeout(toastTimer); toastTimer=setTimeout(()=>el.classList.remove('show'),1500); }
+    async function copyText(text){ try{ if(navigator.clipboard&&window.isSecureContext){ await navigator.clipboard.writeText(text);}else{ const t=document.createElement('textarea'); t.value=text; t.style.position='fixed'; t.style.left='-9999px'; document.body.appendChild(t); t.select(); document.execCommand('copy'); document.body.removeChild(t);} showMessage('コピーしました',false);}catch(e){ showMessage('コピーできませんでした',true);} }
+    function showLoading(show){ document.getElementById('loading').classList.toggle('show',show); }
+
+    // ===== LIFF初期化＆データ取得 =====
+    async function initLiff(){ try{ await liff.init({liffId:LIFF_ID}); if(!liff.isLoggedIn()){ liff.login(); return; } }catch(e){ console.error('LIFF init error:',e); } loadCasesData(); }
+
+    async function loadCasesData(){
+      try{
+        showLoading(true);
+        const res=await fetch(GAS_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},redirect:'follow',body:JSON.stringify({action:'getUnconfirmedCases'})});
+        const data=await res.json();
+        casesData=data.cases||[];
+        currentIndex=0;
+        showLoading(false);
+        if(casesData.length===0){ renderEmpty(); return; }
+        populateCaseSelect();
+        displayCase(0);
+      }catch(e){ console.error('Load error:',e); showLoading(false); showMessage('読み込みエラー: '+e.message,true); }
+    }
+
+    function renderEmpty(){
+      document.getElementById('countBadge').textContent='未処理 0件';
+      document.getElementById('caseSelect').innerHTML='<option>案件なし</option>';
+      document.getElementById('positionAccordions').innerHTML='<div class="empty-state">未確認の案件はありません</div>';
+      document.getElementById('rawText').textContent='';
+    }
+
+    function populateCaseSelect(){
+      const sel=document.getElementById('caseSelect');
+      sel.innerHTML='';
+      casesData.forEach((item,i)=>{ const o=document.createElement('option'); o.value=i; o.textContent=`${i+1}. ${item.caseName}`; sel.appendChild(o); });
+      sel.value=currentIndex;
+      document.getElementById('countBadge').textContent=`未処理 ${casesData.length}件`;
+    }
+
+    function displayCase(index){
+      if(index<0||index>=casesData.length) return;
+      currentIndex=index;
+      const c=casesData[index];
+      document.getElementById('caseSelect').value=index;
+      document.getElementById('rawText').textContent=c.rawText||'原文なし';
+
+      setCopy('copyCaseName', c.caseName||'');
+      setCopy('copyClient', c.client||'');
+      setCopy('copyContact', c.contact||'');
+      document.getElementById('caseName').value='';
+      document.getElementById('client').value='';
+      document.getElementById('contact').value='';
+
+      renderPositions(c.positions||{});
+      document.getElementById('registerToCase').checked=true;
+    }
+
+    function setCopy(btnId, value){
+      const btn=document.getElementById(btnId);
+      btn.querySelector('.copy-text').textContent=value;
+      btn.onclick=()=>copyText(value);
+    }
+
+    function handleCaseChange(){ displayCase(parseInt(document.getElementById('caseSelect').value)); }
+    function prevCase(){ if(currentIndex>0) displayCase(currentIndex-1); }
+    function nextCase(){ if(currentIndex<casesData.length-1) displayCase(currentIndex+1); }
+
+    // ===== ポジション動的描画 =====
+    function renderPositions(positions){
+      const container=document.getElementById('positionAccordions');
+      container.innerHTML='';
+      const order=['D','AD','ST'];
+      const keys=Object.keys(positions).filter(k=>(positions[k]||[]).length>0);
+      keys.sort((a,b)=>{ const ia=order.indexOf(a),ib=order.indexOf(b); return (ia===-1?99:ia)-(ib===-1?99:ib); });
+
+      keys.forEach(posType=>{
+        const arr=positions[posType];
+        const acc=document.createElement('section');
+        acc.className='accordion open';
+        acc.dataset.position=posType;
+
+        let blocksHtml='';
+        arr.forEach((p,idx)=>{
+          const uid=`${posType}__${idx}`;
+          const dateArr=parseDateArray(p.date);
+          const dateDisp=displayDateArray(dateArr);
+          const wt=p.workTime||'';
+          const wtDisp=formatTimeDisplay(wt);
+          blocksHtml+=`
+            <article class="date-block" data-pos="${posType}" data-idx="${idx}">
+              <div class="date-title"><div class="date-title-main" data-block-title="${uid}">${escapeHtml(dateDisp)}</div></div>
+              <div class="block-fields">
+                <div class="field full">
+                  <div class="smart-date-row">
+                    <span class="label">日付:</span>
+                    <button class="smart-date-display" type="button" data-date-display="${uid}" data-copy="${escapeHtml(dateDisp)}"><span class="copy-icon">⧉</span><span class="date-text">${escapeHtml(dateDisp)}</span></button>
+                    <button class="calendar-open-btn" type="button" data-date-edit="${uid}">📅</button>
+                  </div>
+                  <input type="hidden" class="field-date" value="${escapeHtml(dateArr.join(','))}">
+                </div>
+                <div class="field">
+                  <div class="smart-time-row">
+                    <span class="label">稼働時間:</span>
+                    <button class="smart-time-display" type="button" data-time-display="${uid}" data-copy="${escapeHtml(wtDisp)}"><span class="copy-icon">⧉</span><span class="time-text">${escapeHtml(wtDisp)}</span></button>
+                    <button class="time-open-btn" type="button" data-time-edit="${uid}">🕐</button>
+                  </div>
+                  <input type="hidden" class="field-worktime" value="${escapeHtml(wt)}">
+                </div>
+                <div class="field">
+                  <div class="label-value"><span class="label">単価:</span>
+                    <button class="copy-value" type="button" data-copy="${withComma(p.unitPrice)}"><span class="copy-icon">⧉</span><span class="copy-text">${withComma(p.unitPrice)}</span></button></div>
+                  <input class="edit-input field-price" type="text" inputmode="numeric" placeholder="修正・追加">
+                </div>
+                <div class="field">
+                  <div class="label-value"><span class="label">交通費:</span>
+                    <button class="copy-value" type="button" data-copy="${withComma(p.transport)}"><span class="copy-icon">⧉</span><span class="copy-text">${withComma(p.transport)}</span></button></div>
+                  <input class="edit-input field-transport" type="text" inputmode="numeric" placeholder="修正・追加">
+                </div>
+                <div class="field">
+                  <div class="label-value"><span class="label">食費:</span>
+                    <button class="copy-value" type="button" data-copy="${withComma(p.meal)}"><span class="copy-icon">⧉</span><span class="copy-text">${withComma(p.meal)}</span></button></div>
+                  <input class="edit-input field-meal" type="text" inputmode="numeric" placeholder="修正・追加">
+                </div>
+                <div class="field full">
+                  <div class="label-value"><span class="label">特記:</span>
+                    <button class="copy-value" type="button" data-copy="${escapeHtml(p.remark||'')}"><span class="copy-icon">⧉</span><span class="copy-text">${escapeHtml(p.remark||'')}</span></button></div>
+                  <textarea class="edit-textarea field-remark" placeholder="修正・追加"></textarea>
+                </div>
+              </div>
+            </article>`;
+        });
+
+        acc.innerHTML=`
+          <button class="accordion-header" type="button">
+            <span class="position-info"><span class="position-name">${escapeHtml(posType)}</span><span class="position-count">${arr.length}条件</span></span>
+            <span class="chevron">⌄</span>
+          </button>
+          <div class="accordion-body">${blocksHtml}</div>`;
+        container.appendChild(acc);
+      });
+
+      bindEvents();
+    }
+
+    function bindEvents(){
+      document.querySelectorAll('.accordion-header').forEach(h=>{ h.onclick=()=>h.closest('.accordion').classList.toggle('open'); });
+      document.querySelectorAll('#positionAccordions .copy-value').forEach(el=>{ el.onclick=(e)=>{ e.stopPropagation(); copyText(el.dataset.copy||el.innerText.trim()); }; });
+      document.querySelectorAll('.smart-date-display').forEach(el=>{ el.onclick=(e)=>{ e.stopPropagation(); copyText(el.dataset.copy||el.innerText.trim()); }; });
+      document.querySelectorAll('.smart-time-display').forEach(el=>{ el.onclick=(e)=>{ e.stopPropagation(); copyText(el.dataset.copy||el.innerText.trim()); }; });
+      document.querySelectorAll('[data-date-edit]').forEach(b=>{ b.onclick=(e)=>{ e.stopPropagation(); openCalendar(b.dataset.dateEdit); }; });
+      document.querySelectorAll('[data-time-edit]').forEach(b=>{ b.onclick=(e)=>{ e.stopPropagation(); openTimeModal(b.dataset.timeEdit); }; });
+    }
+
+    function getBlockByUid(uid){ const [pos,idx]=uid.split('__'); return document.querySelector(`.date-block[data-pos="${pos}"][data-idx="${idx}"]`); }
+
+    // ===== カレンダー =====
+    let calActiveUid=null, calSelected=new Set(), calYear=2025, calMonth=5;
+    function openCalendar(uid){ calActiveUid=uid; const block=getBlockByUid(uid); calSelected=new Set(parseDateArray(block.querySelector('.field-date').value)); const first=uniqueSorted([...calSelected])[0]||toKey(new Date()); const d=toDate(first); calYear=d.getFullYear(); calMonth=d.getMonth(); renderCalendar(); updateCalPreview(); document.getElementById('calendarBackdrop').classList.add('show'); }
+    function closeCalendar(){ document.getElementById('calendarBackdrop').classList.remove('show'); calActiveUid=null; calSelected=new Set(); }
+    function renderCalendar(){ document.getElementById('monthLabel').textContent=`${calYear}年${calMonth+1}月`; const first=new Date(calYear,calMonth,1); const last=new Date(calYear,calMonth+1,0); const grid=document.getElementById('dayGrid'); grid.innerHTML=''; for(let i=0;i<first.getDay();i++){ const e=document.createElement('div'); e.className='day-cell empty'; grid.appendChild(e);} for(let day=1;day<=last.getDate();day++){ const date=new Date(calYear,calMonth,day); const key=toKey(date); const btn=document.createElement('button'); btn.type='button'; btn.className='day-cell'; btn.textContent=day; if(date.getDay()===0) btn.classList.add('sunday'); if(date.getDay()===6) btn.classList.add('saturday'); if(calSelected.has(key)) btn.classList.add('selected'); btn.onclick=()=>{ if(calSelected.has(key)) calSelected.delete(key); else calSelected.add(key); renderCalendar(); updateCalPreview(); }; grid.appendChild(btn);} }
+    function updateCalPreview(){ document.getElementById('datePreview').textContent='選択中：'+displayDateArray([...calSelected]); }
+
+    // ===== 時間 =====
+    let timeActiveUid=null;
+    function openTimeModal(uid){ timeActiveUid=uid; const block=getBlockByUid(uid); const p=parseTimeRange(block.querySelector('.field-worktime').value); document.getElementById('startHour').value=p.sh; document.getElementById('startMinute').value=p.sm; document.getElementById('endHour').value=p.eh; document.getElementById('endMinute').value=p.em; updateTimePreview(); document.getElementById('timeBackdrop').classList.add('show'); }
+    function closeTimeModal(){ document.getElementById('timeBackdrop').classList.remove('show'); timeActiveUid=null; }
+    function getTimeParts(){ return {sh:document.getElementById('startHour').value,sm:document.getElementById('startMinute').value,eh:document.getElementById('endHour').value,em:document.getElementById('endMinute').value}; }
+    function updateTimePreview(){ document.getElementById('timePreview').textContent='選択中：'+formatTimeDisplay(formatTimeStorage(getTimeParts())); }
+    function fillTimeOptions(){ const hours=Array.from({length:24},(_,i)=>String(i).padStart(2,'0')); const mins=['00','15','30','45']; ['startHour','endHour'].forEach(id=>document.getElementById(id).innerHTML=hours.map(v=>`<option value="${v}">${v}</option>`).join('')); ['startMinute','endMinute'].forEach(id=>document.getElementById(id).innerHTML=mins.map(v=>`<option value="${v}">${v}</option>`).join('')); }
+
+    // ===== 保存 =====
+    async function saveData(){
+      try{
+        if(casesData.length===0){ showMessage('保存対象がありません',true); return; }
+        showLoading(true);
+        const c=casesData[currentIndex];
+        const cn=document.getElementById('caseName').value.trim();
+        const cl=document.getElementById('client').value.trim();
+        const ct=document.getElementById('contact').value.trim();
+        const updated={ extId:c.extId, caseName:cn||c.caseName||'', client:cl||c.client||'', contact:ct||c.contact||'', registerToCase:document.getElementById('registerToCase').checked, positions:{} };
+        const numClean=(s)=>parseInt(String(s).replace(/[^0-9-]/g,''),10)||0;
+
+        document.querySelectorAll('#positionAccordions .date-block').forEach(block=>{
+          const pos=block.dataset.pos;
+          if(!updated.positions[pos]) updated.positions[pos]=[];
+          const cv=block.querySelectorAll('.copy-value');
+          const priceIn=block.querySelector('.field-price').value.trim();
+          const transIn=block.querySelector('.field-transport').value.trim();
+          const mealIn=block.querySelector('.field-meal').value.trim();
+          const remarkIn=block.querySelector('.field-remark').value.trim();
+          updated.positions[pos].push({
+            date: block.querySelector('.field-date').value||'',
+            workTime: block.querySelector('.field-worktime').value||'',
+            unitPrice: priceIn!==''?numClean(priceIn):numClean(cv[0]?.dataset.copy),
+            transport: transIn!==''?numClean(transIn):numClean(cv[1]?.dataset.copy),
+            meal: mealIn!==''?numClean(mealIn):numClean(cv[2]?.dataset.copy),
+            remark: remarkIn!==''?remarkIn:(cv[3]?.dataset.copy||'')
+          });
+        });
+
+        const res=await fetch(GAS_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},redirect:'follow',body:JSON.stringify({action:'saveCaseConfirmation',data:updated})});
+        const result=await res.json();
+        showLoading(false);
+        if(result.success){ showMessage('✅ 保存完了！',false); setTimeout(()=>loadCasesData(),800); }
+        else{ showMessage('❌ 保存失敗: '+(result.error||'不明'),true); }
+      }catch(e){ console.error('Save error:',e); showLoading(false); showMessage('保存エラー: '+e.message,true); }
+    }
+
+    // ===== モーダルのボタン登録 =====
+    function setupModals(){
+      fillTimeOptions();
+      document.getElementById('prevMonth').onclick=()=>{ calMonth--; if(calMonth<0){calMonth=11;calYear--;} renderCalendar(); };
+      document.getElementById('nextMonth').onclick=()=>{ calMonth++; if(calMonth>11){calMonth=0;calYear++;} renderCalendar(); };
+      document.getElementById('clearDates').onclick=()=>{ calSelected.clear(); renderCalendar(); updateCalPreview(); };
+      document.getElementById('calendarClose').onclick=closeCalendar;
+      document.getElementById('calendarBackdrop').onclick=(e)=>{ if(e.target===document.getElementById('calendarBackdrop')) closeCalendar(); };
+      document.getElementById('confirmDates').onclick=()=>{ if(!calActiveUid) return; const arr=uniqueSorted([...calSelected]); const block=getBlockByUid(calActiveUid); block.querySelector('.field-date').value=arr.join(','); const disp=displayDateArray(arr); const d=block.querySelector('.smart-date-display'); d.querySelector('.date-text').textContent=disp; d.dataset.copy=disp; block.querySelector('[data-block-title]').textContent=disp; closeCalendar(); showMessage('日付を反映しました',false); };
+
+      ['startHour','startMinute','endHour','endMinute'].forEach(id=>document.getElementById(id).addEventListener('change',updateTimePreview));
+      document.getElementById('timeClose').onclick=closeTimeModal;
+      document.getElementById('cancelTime').onclick=closeTimeModal;
+      document.getElementById('timeBackdrop').onclick=(e)=>{ if(e.target===document.getElementById('timeBackdrop')) closeTimeModal(); };
+      document.getElementById('confirmTime').onclick=()=>{ if(!timeActiveUid) return; const val=formatTimeStorage(getTimeParts()); const block=getBlockByUid(timeActiveUid); block.querySelector('.field-worktime').value=val; const disp=formatTimeDisplay(val); const t=block.querySelector('.smart-time-display'); t.querySelector('.time-text').textContent=disp; t.dataset.copy=disp; closeTimeModal(); showMessage('稼働時間を反映しました',false); };
+
+      document.addEventListener('keydown',(e)=>{ if(e.key==='Escape'){ closeCalendar(); closeTimeModal(); } });
+    }
+
+    window.onload=()=>{ setupModals(); initLiff(); };
+  </script>
 </body>
 </html>
