@@ -325,6 +325,219 @@
             background: #f44336;
         }
 
+        /* ===== 追加：日付ブロックのゼブラ色分け ===== */
+        .date-block {
+            border-radius: 8px;
+            padding: 10px;
+            margin-bottom: 10px;
+            border: 1px solid #e2e8f0;
+        }
+        .date-block.zebra-odd {
+            background: #ffffff;
+        }
+        .date-block.zebra-even {
+            background: #EFF6FF;
+        }
+        .date-block-title {
+            font-size: 13px;
+            font-weight: 900;
+            color: #0f172a;
+            margin-bottom: 8px;
+            padding-bottom: 6px;
+            border-bottom: 2px solid #2563EB;
+        }
+
+        /* ===== 追加：日付・稼働時間の表示行 ===== */
+        .smart-row {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .smart-display {
+            flex: 1;
+            min-width: 0;
+            border: 1px solid #D6E4FF;
+            background: #EFF6FF;
+            color: #0f172a;
+            border-radius: 6px;
+            padding: 7px 8px;
+            font-size: 12px;
+            font-weight: 800;
+            cursor: pointer;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .smart-edit-btn {
+            flex: 0 0 auto;
+            width: 36px;
+            height: 32px;
+            border: 1px solid #D6E4FF;
+            background: #fff;
+            color: #2563EB;
+            border-radius: 6px;
+            font-size: 15px;
+            cursor: pointer;
+        }
+        .copy-value {
+            cursor: pointer;
+        }
+        .accordion-count {
+            font-size: 10px;
+            font-weight: 800;
+            color: #6B7280;
+            background: #F1F5F9;
+            border-radius: 999px;
+            padding: 2px 7px;
+            margin-left: 4px;
+        }
+
+        /* ===== 追加：モーダル ===== */
+        .modal-backdrop {
+            position: fixed;
+            inset: 0;
+            z-index: 2000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            background: rgba(15, 23, 42, 0.4);
+            padding: 12px;
+        }
+        .modal-backdrop.show { display: flex; }
+        .modal-box {
+            width: min(100%, 420px);
+            max-height: 88vh;
+            background: #fff;
+            border-radius: 14px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 20px 50px rgba(15,23,42,0.3);
+        }
+        .modal-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 14px;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        .modal-head h3 { margin: 0; font-size: 15px; }
+        .modal-close {
+            border: 1px solid #e2e8f0;
+            background: #fff;
+            border-radius: 999px;
+            width: 32px; height: 32px;
+            font-size: 18px; cursor: pointer;
+        }
+        .modal-body { padding: 12px 14px; overflow-y: auto; }
+        .modal-foot {
+            padding: 12px 14px;
+            border-top: 1px solid #e2e8f0;
+            display: grid;
+            grid-template-columns: 1fr 1.4fr;
+            gap: 8px;
+        }
+        .preview-box {
+            background: #EFF6FF;
+            border: 1px solid #D6E4FF;
+            border-radius: 8px;
+            padding: 10px;
+            font-size: 13px;
+            font-weight: 800;
+            margin-bottom: 10px;
+            min-height: 20px;
+        }
+        .modal-btn {
+            border: 0;
+            border-radius: 8px;
+            padding: 12px;
+            font-size: 14px;
+            font-weight: 800;
+            cursor: pointer;
+        }
+        .modal-btn.ghost { background: #E5E7EB; color: #374151; }
+        .modal-btn.primary { background: #2563EB; color: #fff; }
+
+        /* カレンダー */
+        .cal-nav {
+            display: grid;
+            grid-template-columns: 40px 1fr 40px;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+        .cal-nav button {
+            border: 1px solid #e2e8f0;
+            background: #fff;
+            border-radius: 8px;
+            height: 34px;
+            font-size: 16px;
+            cursor: pointer;
+            color: #2563EB;
+            font-weight: 900;
+        }
+        .cal-month { text-align: center; font-weight: 900; font-size: 15px; }
+        .cal-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 4px;
+        }
+        .cal-week {
+            text-align: center;
+            font-size: 11px;
+            font-weight: 800;
+            color: #6B7280;
+            padding: 4px 0;
+        }
+        .cal-day {
+            aspect-ratio: 1;
+            border: 1px solid transparent;
+            border-radius: 8px;
+            background: #fff;
+            font-size: 13px;
+            font-weight: 800;
+            cursor: pointer;
+        }
+        .cal-day.empty { visibility: hidden; }
+        .cal-day.sun { color: #DC2626; }
+        .cal-day.sat { color: #2563EB; }
+        .cal-day.selected {
+            background: #2563EB;
+            color: #fff;
+            border-color: #2563EB;
+        }
+
+        /* 時間ドロップダウン */
+        .time-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr auto 1fr 1fr;
+            gap: 6px;
+            align-items: end;
+        }
+        .time-grid label {
+            font-size: 10px;
+            color: #6B7280;
+            font-weight: 800;
+            text-align: center;
+            display: block;
+            margin-bottom: 3px;
+        }
+        .time-grid select {
+            width: 100%;
+            height: 40px;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 15px;
+            font-weight: 800;
+            text-align: center;
+        }
+        .time-wave {
+            display: grid;
+            place-items: center;
+            height: 40px;
+            font-weight: 900;
+            color: #2563EB;
+        }
+
         /* ボタンセクション用の余白 */
         .right-panel-content {
             padding-bottom: 80px;
@@ -405,10 +618,264 @@
     <!-- メッセージ -->
     <div class="message" id="message"></div>
 
+    <!-- カレンダーモーダル -->
+    <div class="modal-backdrop" id="calBackdrop">
+        <div class="modal-box">
+            <div class="modal-head">
+                <h3>日付を修正</h3>
+                <button class="modal-close" id="calClose">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="cal-nav">
+                    <button id="calPrev">‹</button>
+                    <div class="cal-month" id="calMonth"></div>
+                    <button id="calNext">›</button>
+                </div>
+                <div class="cal-grid">
+                    <div class="cal-week">日</div><div class="cal-week">月</div><div class="cal-week">火</div>
+                    <div class="cal-week">水</div><div class="cal-week">木</div><div class="cal-week">金</div><div class="cal-week">土</div>
+                </div>
+                <div class="cal-grid" id="calGrid" style="margin-top:4px;"></div>
+            </div>
+            <div class="modal-body" style="padding-top:0;">
+                <div class="preview-box" id="calPreview">選択中：未設定</div>
+            </div>
+            <div class="modal-foot">
+                <button class="modal-btn ghost" id="calClear">全解除</button>
+                <button class="modal-btn primary" id="calConfirm">確定</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 稼働時間モーダル -->
+    <div class="modal-backdrop" id="timeBackdrop">
+        <div class="modal-box">
+            <div class="modal-head">
+                <h3>稼働時間を修正</h3>
+                <button class="modal-close" id="timeClose">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="time-grid">
+                    <div><label>開始(時)</label><select id="startHour"></select></div>
+                    <div><label>開始(分)</label><select id="startMinute"></select></div>
+                    <div class="time-wave">〜</div>
+                    <div><label>終了(時)</label><select id="endHour"></select></div>
+                    <div><label>終了(分)</label><select id="endMinute"></select></div>
+                </div>
+                <div class="preview-box" id="timePreview" style="margin-top:12px;">選択中：未設定</div>
+            </div>
+            <div class="modal-foot">
+                <button class="modal-btn ghost" id="timeCancel">キャンセル</button>
+                <button class="modal-btn primary" id="timeConfirm">確定</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         let casesData = [];
         let currentIndex = 0;
         const GAS_URL = 'https://script.google.com/macros/s/AKfycbwrpujZnwOw98ieBUmX_D_sOYfS9QjgII_jHW2dGt3tZ9poo3rl9PHpp7Tn3baAYn6D/exec';
+
+        const dayNames = ['日','月','火','水','木','金','土'];
+
+        function toDate(key) {
+            if (!key) return null;
+            const s = String(key).slice(0, 10);
+            const [y, m, d] = s.split('-').map(Number);
+            if (!y || !m || !d) return null;
+            return new Date(y, m - 1, d);
+        }
+        function toKey(date) {
+            const y = date.getFullYear();
+            const m = String(date.getMonth() + 1).padStart(2, '0');
+            const d = String(date.getDate()).padStart(2, '0');
+            return `${y}-${m}-${d}`;
+        }
+        function parseDateArray(value) {
+            if (!value) return [];
+            return String(value).split(',')
+                .map(s => s.trim()).filter(Boolean)
+                .map(s => { const dt = toDate(s); return dt ? toKey(dt) : null; })
+                .filter(Boolean);
+        }
+        function formatDateJp(key) {
+            const date = toDate(key);
+            if (!date) return key;
+            const yy = String(date.getFullYear()).slice(-2);
+            const mm = String(date.getMonth() + 1).padStart(2, '0');
+            const dd = String(date.getDate()).padStart(2, '0');
+            return `${yy}/${mm}/${dd}（${dayNames[date.getDay()]}）`;
+        }
+        function uniqueSorted(keys) {
+            return [...new Set(keys)].sort((a, b) => toDate(a) - toDate(b));
+        }
+        function isConsecutive(keys) {
+            if (keys.length <= 1) return false;
+            const s = uniqueSorted(keys);
+            for (let i = 1; i < s.length; i++) {
+                if (Math.round((toDate(s[i]) - toDate(s[i-1])) / 86400000) !== 1) return false;
+            }
+            return true;
+        }
+        function displayDateArray(keys) {
+            const s = uniqueSorted(keys);
+            if (s.length === 0) return '未設定';
+            if (s.length === 1) return formatDateJp(s[0]);
+            if (isConsecutive(s)) return `${formatDateJp(s[0])}〜${formatDateJp(s[s.length-1])} 連続${s.length}日`;
+            return `${s.map(formatDateJp).join(', ')} 飛び石${s.length}日`;
+        }
+
+        function parseTimeRange(value) {
+            const m = /(\d{1,2}):(\d{2})\s*[~〜]\s*(\d{1,2}):(\d{2})/.exec(value || '');
+            if (!m) return { sh:'09', sm:'00', eh:'18', em:'00' };
+            return { sh: m[1].padStart(2,'0'), sm: m[2], eh: m[3].padStart(2,'0'), em: m[4] };
+        }
+        function formatTimeStorage(p) { return `${p.sh}:${p.sm}~${p.eh}:${p.em}`; }
+        function formatTimeDisplay(value) {
+            if (!value) return '未設定';
+            const p = parseTimeRange(value);
+            return `${p.sh}:${p.sm} 〜 ${p.eh}:${p.em}`;
+        }
+
+        function withComma(n) {
+            const num = parseInt(String(n).replace(/[^0-9-]/g, ''), 10);
+            if (isNaN(num)) return '0';
+            return num.toLocaleString('ja-JP');
+        }
+        function escapeAttr(s) { return String(s).replace(/"/g, '&quot;'); }
+
+        async function copyText(text) {
+            try {
+                if (navigator.clipboard && window.isSecureContext) {
+                    await navigator.clipboard.writeText(text);
+                } else {
+                    const t = document.createElement('textarea');
+                    t.value = text; t.style.position = 'fixed'; t.style.left = '-9999px';
+                    document.body.appendChild(t); t.select();
+                    document.execCommand('copy'); document.body.removeChild(t);
+                }
+                showMessage('コピーしました', false);
+            } catch(e) { showMessage('コピーできませんでした', true); }
+        }
+        function setupCopyValue(elementId, value) {
+            const el = document.getElementById(elementId);
+            if (!el) return;
+            el.textContent = value;
+            el.classList.add('copy-value');
+            el.dataset.copy = value;
+            el.onclick = () => copyText(value);
+        }
+
+        function bindBlockEvents() {
+            document.querySelectorAll('#positionAccordions .copy-value').forEach(el => {
+                el.onclick = (e) => { e.stopPropagation(); copyText(el.dataset.copy || el.textContent.trim()); };
+            });
+            document.querySelectorAll('#positionAccordions .smart-display').forEach(el => {
+                el.onclick = (e) => { e.stopPropagation(); copyText(el.dataset.copy || el.textContent.trim()); };
+            });
+            document.querySelectorAll('[data-date-edit]').forEach(btn => {
+                btn.onclick = (e) => { e.stopPropagation(); openCalendar(btn.dataset.dateEdit); };
+            });
+            document.querySelectorAll('[data-time-edit]').forEach(btn => {
+                btn.onclick = (e) => { e.stopPropagation(); openTimeModal(btn.dataset.timeEdit); };
+            });
+        }
+
+        // ===== カレンダーモーダル =====
+        let calActiveUid = null;
+        let calSelected = new Set();
+        let calYear = 2025, calMonth = 5;
+
+        function getBlockByUid(uid) {
+            const i = uid.lastIndexOf('-');
+            const pos = uid.slice(0, i);
+            const idx = uid.slice(i + 1);
+            return document.querySelector(`.date-block[data-pos="${pos}"][data-idx="${idx}"]`);
+        }
+        function openCalendar(uid) {
+            calActiveUid = uid;
+            const block = getBlockByUid(uid);
+            const hidden = block.querySelector('.field-date');
+            calSelected = new Set(parseDateArray(hidden.value));
+            const first = uniqueSorted([...calSelected])[0] || toKey(new Date());
+            const d = toDate(first);
+            calYear = d.getFullYear(); calMonth = d.getMonth();
+            renderCalendar(); updateCalPreview();
+            document.getElementById('calBackdrop').classList.add('show');
+        }
+        function closeCalendar() {
+            document.getElementById('calBackdrop').classList.remove('show');
+            calActiveUid = null; calSelected = new Set();
+        }
+        function renderCalendar() {
+            document.getElementById('calMonth').textContent = `${calYear}年${calMonth+1}月`;
+            const first = new Date(calYear, calMonth, 1);
+            const last = new Date(calYear, calMonth+1, 0);
+            const grid = document.getElementById('calGrid');
+            grid.innerHTML = '';
+            for (let i = 0; i < first.getDay(); i++) {
+                const e = document.createElement('div');
+                e.className = 'cal-day empty'; grid.appendChild(e);
+            }
+            for (let day = 1; day <= last.getDate(); day++) {
+                const date = new Date(calYear, calMonth, day);
+                const key = toKey(date);
+                const btn = document.createElement('div');
+                btn.className = 'cal-day';
+                btn.textContent = day;
+                if (date.getDay() === 0) btn.classList.add('sun');
+                if (date.getDay() === 6) btn.classList.add('sat');
+                if (calSelected.has(key)) btn.classList.add('selected');
+                btn.onclick = () => {
+                    if (calSelected.has(key)) calSelected.delete(key); else calSelected.add(key);
+                    renderCalendar(); updateCalPreview();
+                };
+                grid.appendChild(btn);
+            }
+        }
+        function updateCalPreview() {
+            document.getElementById('calPreview').textContent = '選択中：' + displayDateArray([...calSelected]);
+        }
+
+        // ===== 稼働時間モーダル =====
+        let timeActiveUid = null;
+        function openTimeModal(uid) {
+            timeActiveUid = uid;
+            const block = getBlockByUid(uid);
+            const hidden = block.querySelector('.field-worktime');
+            const p = parseTimeRange(hidden.value);
+            document.getElementById('startHour').value = p.sh;
+            document.getElementById('startMinute').value = p.sm;
+            document.getElementById('endHour').value = p.eh;
+            document.getElementById('endMinute').value = p.em;
+            updateTimePreview();
+            document.getElementById('timeBackdrop').classList.add('show');
+        }
+        function closeTimeModal() {
+            document.getElementById('timeBackdrop').classList.remove('show');
+            timeActiveUid = null;
+        }
+        function getTimeParts() {
+            return {
+                sh: document.getElementById('startHour').value,
+                sm: document.getElementById('startMinute').value,
+                eh: document.getElementById('endHour').value,
+                em: document.getElementById('endMinute').value
+            };
+        }
+        function updateTimePreview() {
+            document.getElementById('timePreview').textContent = '選択中：' + formatTimeDisplay(formatTimeStorage(getTimeParts()));
+        }
+        function fillTimeOptions() {
+            const hours = Array.from({length:24}, (_,i)=>String(i).padStart(2,'0'));
+            const mins = ['00','15','30','45'];
+            ['startHour','endHour'].forEach(id => {
+                document.getElementById(id).innerHTML = hours.map(v=>`<option value="${v}">${v}</option>`).join('');
+            });
+            ['startMinute','endMinute'].forEach(id => {
+                document.getElementById(id).innerHTML = mins.map(v=>`<option value="${v}">${v}</option>`).join('');
+            });
+        }
 
         // LIFF 初期化
         async function initLiff() {
@@ -488,15 +955,15 @@
             // 原文表示
             document.getElementById('rawText').textContent = caseData.rawText || '原文なし';
 
-            // 基本情報表示（初期値）
-            document.getElementById('caseNameDisplay').textContent = caseData.caseName || '';
-            document.getElementById('clientDisplay').textContent = caseData.client || '';
-            document.getElementById('contactDisplay').textContent = caseData.contact || '';
+            // 基本情報表示（元の値・タップでコピー）
+            setupCopyValue('caseNameDisplay', caseData.caseName || '');
+            setupCopyValue('clientDisplay', caseData.client || '');
+            setupCopyValue('contactDisplay', caseData.contact || '');
 
-            // 入力フィールドに値を入力
-            document.getElementById('caseName').value = caseData.caseName || '';
-            document.getElementById('client').value = caseData.client || '';
-            document.getElementById('contact').value = caseData.contact || '';
+            // 入力フィールドは空欄スタート（入力なし＝元の値維持）
+            document.getElementById('caseName').value = '';
+            document.getElementById('client').value = '';
+            document.getElementById('contact').value = '';
 
             // ポジション別アコーディオン表示
             displayPositionAccordions(caseData.positions || {});
@@ -510,83 +977,98 @@
             const container = document.getElementById('positionAccordions');
             container.innerHTML = '';
 
-            // GAS から来る positions は { D: [...], ST: [...] } のオブジェクト形式
-            // 固定の D/AD/ST + その他のポジション（英対/案内STなど）も表示
-            const fixedTypes = ['D', 'AD', 'ST'];
-            const allTypes = [...fixedTypes];
-
-            // positions に含まれる固定外のポジションを追加
-            Object.keys(positions).forEach(posType => {
-                if (!allTypes.includes(posType)) {
-                    allTypes.push(posType);
-                }
+            // データのあるポジションのみ表示（D/AD/STを優先順で、その他は後ろ）
+            const order = ['D', 'AD', 'ST'];
+            const keys = Object.keys(positions).filter(k => (positions[k] || []).length > 0);
+            keys.sort((a, b) => {
+                const ia = order.indexOf(a), ib = order.indexOf(b);
+                return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib);
             });
 
-            allTypes.forEach(posType => {
-                const posDataArray = positions[posType] || [];
+            keys.forEach(posType => {
+                const posDataArray = positions[posType];
 
                 const accordion = document.createElement('div');
-                accordion.className = 'accordion';
+                accordion.className = 'accordion open';
 
                 const header = document.createElement('div');
-                header.className = 'accordion-header';
-                header.innerHTML = `${posType} <span class="accordion-icon">▼</span>`;
+                header.className = 'accordion-header open';
+                header.innerHTML = `${posType} <span class="accordion-count">${posDataArray.length}条件</span> <span class="accordion-icon">▼</span>`;
                 header.onclick = () => toggleAccordion(header);
 
                 const content = document.createElement('div');
-                content.className = 'accordion-content';
+                content.className = 'accordion-content open';
 
-                if (posDataArray.length === 0) {
-                    content.className += ' empty';
-                    content.textContent = 'このポジションはありません';
-                } else {
-                    // 複数の日付がある場合は全て表示
-                    let html = '';
-                    posDataArray.forEach((posData, idx) => {
-                        // CSS セレクタ用にポジション名をエスケープ（英対/案内ST → 英対案内ST）
-                        const safeKey = posType.replace(/[^a-zA-Z0-9ぁ-んァ-ヶ一-龠]/g, '');
-                        html += `
-                            <div style="border-bottom: 1px solid #eee; padding-bottom: 12px; margin-bottom: 12px;" data-pos="${posType}" data-idx="${idx}">
-                                <div class="form-item">
-                                    <label class="form-label">日付</label>
-                                    <div class="form-value">${posData.date || ''}</div>
-                                    <input type="text" class="form-input field-date" value="${posData.date || ''}" placeholder="修正・追加">
+                let html = '';
+                posDataArray.forEach((posData, idx) => {
+                    const zebra = (idx % 2 === 0) ? 'zebra-odd' : 'zebra-even';
+                    const uid = `${posType}-${idx}`;
+
+                    // 日付配列を準備（カンマ区切り文字列 or 単一日付を配列化）
+                    const dateArr = parseDateArray(posData.date);
+                    const dateDisp = displayDateArray(dateArr);
+
+                    // 稼働時間
+                    const wt = posData.workTime || '';
+                    const wtDisp = formatTimeDisplay(wt);
+
+                    html += `
+                        <div class="date-block ${zebra}" data-pos="${posType}" data-idx="${idx}">
+                            <div class="date-block-title" data-block-title="${uid}">${dateDisp}</div>
+
+                            <div class="form-item">
+                                <label class="form-label">日付</label>
+                                <div class="smart-row">
+                                    <div class="smart-display" data-date-display="${uid}" data-copy="${dateDisp}">${dateDisp}</div>
+                                    <button type="button" class="smart-edit-btn" data-date-edit="${uid}">📅</button>
                                 </div>
-                                <div class="form-item">
-                                    <label class="form-label">稼働時間</label>
-                                    <div class="form-value">${posData.workTime || ''}</div>
-                                    <input type="text" class="form-input field-worktime" value="${posData.workTime || ''}" placeholder="修正・追加">
-                                </div>
-                                <div class="form-item">
-                                    <label class="form-label">単価</label>
-                                    <div class="form-value">¥${posData.unitPrice || 0}</div>
-                                    <input type="number" class="form-input field-price" value="${posData.unitPrice || 0}" placeholder="修正・追加">
-                                </div>
-                                <div class="form-item">
-                                    <label class="form-label">交通費</label>
-                                    <div class="form-value">¥${posData.transport || 0}</div>
-                                    <input type="number" class="form-input field-transport" value="${posData.transport || 0}" placeholder="修正・追加">
-                                </div>
-                                <div class="form-item">
-                                    <label class="form-label">食費</label>
-                                    <div class="form-value">¥${posData.meal || 0}</div>
-                                    <input type="number" class="form-input field-meal" value="${posData.meal || 0}" placeholder="修正・追加">
-                                </div>
-                                <div class="form-item">
-                                    <label class="form-label">特記</label>
-                                    <div class="form-value">${posData.remark || ''}</div>
-                                    <input type="text" class="form-input field-remark" value="${posData.remark || ''}" placeholder="修正・追加">
-                                </div>
+                                <input type="hidden" class="field-date" value="${dateArr.join(',')}">
                             </div>
-                        `;
-                    });
-                    content.innerHTML = html;
-                }
+
+                            <div class="form-item">
+                                <label class="form-label">稼働時間</label>
+                                <div class="smart-row">
+                                    <div class="smart-display" data-time-display="${uid}" data-copy="${wtDisp}">${wtDisp}</div>
+                                    <button type="button" class="smart-edit-btn" data-time-edit="${uid}">🕐</button>
+                                </div>
+                                <input type="hidden" class="field-worktime" value="${wt}">
+                            </div>
+
+                            <div class="form-item">
+                                <label class="form-label">単価</label>
+                                <div class="form-value copy-value" data-copy="${withComma(posData.unitPrice)}">¥${withComma(posData.unitPrice)}</div>
+                                <input type="number" class="form-input field-price" placeholder="修正・追加">
+                            </div>
+
+                            <div class="form-item">
+                                <label class="form-label">交通費</label>
+                                <div class="form-value copy-value" data-copy="${withComma(posData.transport)}">¥${withComma(posData.transport)}</div>
+                                <input type="number" class="form-input field-transport" placeholder="修正・追加">
+                            </div>
+
+                            <div class="form-item">
+                                <label class="form-label">食費</label>
+                                <div class="form-value copy-value" data-copy="${withComma(posData.meal)}">¥${withComma(posData.meal)}</div>
+                                <input type="number" class="form-input field-meal" placeholder="修正・追加">
+                            </div>
+
+                            <div class="form-item">
+                                <label class="form-label">特記</label>
+                                <div class="form-value copy-value" data-copy="${escapeAttr(posData.remark || '')}">${posData.remark || ''}</div>
+                                <input type="text" class="form-input field-remark" placeholder="修正・追加">
+                            </div>
+                        </div>
+                    `;
+                });
+                content.innerHTML = html;
 
                 accordion.appendChild(header);
                 accordion.appendChild(content);
                 container.appendChild(accordion);
             });
+
+            // イベント付与
+            bindBlockEvents();
         }
 
         // アコーディオン切り替え
@@ -621,29 +1103,46 @@
                 showLoading(true);
 
                 const caseData = casesData[currentIndex];
+                // 入力なし＝元の値維持
+                const cnInput = document.getElementById('caseName').value.trim();
+                const clInput = document.getElementById('client').value.trim();
+                const ctInput = document.getElementById('contact').value.trim();
+
                 const updatedData = {
                     extId: caseData.extId,
-                    caseName: document.getElementById('caseName').value,
-                    client: document.getElementById('client').value,
-                    contact: document.getElementById('contact').value,
+                    caseName: cnInput || caseData.caseName || '',
+                    client: clInput || caseData.client || '',
+                    contact: ctInput || caseData.contact || '',
                     registerToCase: document.getElementById('registerToCase').checked,
                     positions: {}
                 };
 
-                // ポジション別データを収集（data-pos / data-idx 属性から）
                 const blocks = document.querySelectorAll('#positionAccordions [data-pos]');
                 blocks.forEach(block => {
                     const posType = block.getAttribute('data-pos');
-                    if (!updatedData.positions[posType]) {
-                        updatedData.positions[posType] = [];
-                    }
+                    if (!updatedData.positions[posType]) updatedData.positions[posType] = [];
+
+                    const priceInput = block.querySelector('.field-price').value.trim();
+                    const transInput = block.querySelector('.field-transport').value.trim();
+                    const mealInput = block.querySelector('.field-meal').value.trim();
+                    const remarkInput = block.querySelector('.field-remark').value.trim();
+
+                    // 元の値（data-copyから数値復元）
+                    const origPrice = block.querySelectorAll('.copy-value')[0]?.dataset.copy || '0';
+                    const origTrans = block.querySelectorAll('.copy-value')[1]?.dataset.copy || '0';
+                    const origMeal  = block.querySelectorAll('.copy-value')[2]?.dataset.copy || '0';
+                    const origRemark= block.querySelectorAll('.copy-value')[3]?.dataset.copy || '';
+
+                    const numClean = (s) => parseInt(String(s).replace(/[^0-9-]/g,''),10) || 0;
+
                     updatedData.positions[posType].push({
-                        date: block.querySelector('.field-date')?.value || '',
-                        workTime: block.querySelector('.field-worktime')?.value || '',
-                        unitPrice: block.querySelector('.field-price')?.value || 0,
-                        transport: block.querySelector('.field-transport')?.value || 0,
-                        meal: block.querySelector('.field-meal')?.value || 0,
-                        remark: block.querySelector('.field-remark')?.value || ''
+                        // 日付は隠しフィールド（カンマ区切り文字列）
+                        date: block.querySelector('.field-date').value || '',
+                        workTime: block.querySelector('.field-worktime').value || '',
+                        unitPrice: priceInput !== '' ? numClean(priceInput) : numClean(origPrice),
+                        transport: transInput !== '' ? numClean(transInput) : numClean(origTrans),
+                        meal: mealInput !== '' ? numClean(mealInput) : numClean(origMeal),
+                        remark: remarkInput !== '' ? remarkInput : origRemark
                     });
                 });
 
@@ -651,23 +1150,17 @@
                     method: 'POST',
                     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
                     redirect: 'follow',
-                    body: JSON.stringify({
-                        action: 'saveCaseConfirmation',
-                        data: updatedData
-                    })
+                    body: JSON.stringify({ action: 'saveCaseConfirmation', data: updatedData })
                 });
 
                 const result = await response.json();
 
                 if (result.success) {
                     showMessage('✅ 保存完了！', false);
-                    setTimeout(() => {
-                        loadCasesData();
-                    }, 800);
+                    setTimeout(() => { loadCasesData(); }, 800);
                 } else {
                     showMessage('❌ 保存失敗: ' + (result.error || '不明なエラー'), true);
                 }
-
                 showLoading(false);
             } catch (error) {
                 console.error('Save error:', error);
@@ -692,8 +1185,64 @@
             }, 3000);
         }
 
+        // モーダル関連イベント登録
+        function setupModals() {
+            fillTimeOptions();
+
+            // カレンダー
+            document.getElementById('calPrev').onclick = () => {
+                calMonth--; if (calMonth < 0) { calMonth = 11; calYear--; } renderCalendar();
+            };
+            document.getElementById('calNext').onclick = () => {
+                calMonth++; if (calMonth > 11) { calMonth = 0; calYear++; } renderCalendar();
+            };
+            document.getElementById('calClear').onclick = () => {
+                calSelected.clear(); renderCalendar(); updateCalPreview();
+            };
+            document.getElementById('calClose').onclick = closeCalendar;
+            document.getElementById('calBackdrop').onclick = (e) => {
+                if (e.target === document.getElementById('calBackdrop')) closeCalendar();
+            };
+            document.getElementById('calConfirm').onclick = () => {
+                if (!calActiveUid) return;
+                const arr = uniqueSorted([...calSelected]);
+                const block = getBlockByUid(calActiveUid);
+                block.querySelector('.field-date').value = arr.join(',');
+                const disp = displayDateArray(arr);
+                const dispEl = block.querySelector('.smart-display[data-date-display]');
+                dispEl.textContent = disp;
+                dispEl.dataset.copy = disp;
+                block.querySelector('[data-block-title]').textContent = disp;
+                closeCalendar();
+                showMessage('日付を反映しました', false);
+            };
+
+            // 稼働時間
+            ['startHour','startMinute','endHour','endMinute'].forEach(id => {
+                document.getElementById(id).addEventListener('change', updateTimePreview);
+            });
+            document.getElementById('timeClose').onclick = closeTimeModal;
+            document.getElementById('timeCancel').onclick = closeTimeModal;
+            document.getElementById('timeBackdrop').onclick = (e) => {
+                if (e.target === document.getElementById('timeBackdrop')) closeTimeModal();
+            };
+            document.getElementById('timeConfirm').onclick = () => {
+                if (!timeActiveUid) return;
+                const val = formatTimeStorage(getTimeParts());
+                const block = getBlockByUid(timeActiveUid);
+                block.querySelector('.field-worktime').value = val;
+                const disp = formatTimeDisplay(val);
+                const dispEl = block.querySelector('.smart-display[data-time-display]');
+                dispEl.textContent = disp;
+                dispEl.dataset.copy = disp;
+                closeTimeModal();
+                showMessage('稼働時間を反映しました', false);
+            };
+        }
+
         // ページ読み込み
         window.onload = () => {
+            setupModals();
             initLiff();
         };
     </script>
