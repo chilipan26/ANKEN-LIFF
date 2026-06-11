@@ -139,6 +139,15 @@
     .modal-title-sub { margin-top: 2px; color: var(--muted); font-size: 11px; line-height: 1.3; font-weight: 700; }
     .close-btn { width: 34px; height: 34px; border: 1px solid var(--line); border-radius: 999px;
       background: #fff; color: #475569; font-size: 18px; line-height: 1; cursor: pointer; }
+    .year-row { display: flex; gap: 6px; justify-content: center;
+      padding: 7px 12px 5px; border-bottom: 1px solid var(--line); background: #F8FAFC;
+      overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+    .year-row::-webkit-scrollbar { display: none; }
+    .year-pill { flex: 0 0 auto; border: 1px solid var(--line); border-radius: 999px;
+      background: #fff; color: var(--muted); font-size: 13px; font-weight: 900;
+      padding: 7px 18px; cursor: pointer; touch-action: manipulation; }
+    .year-pill.active { background: var(--main); color: #fff; border-color: var(--main);
+      box-shadow: 0 2px 6px rgba(37,99,235,0.22); }
     .month-nav { display: grid; grid-template-columns: 38px 1fr 38px; align-items: center; gap: 6px;
       padding: 9px 12px; border-bottom: 1px solid var(--line); background: #F8FAFC; }
     .month-btn { width: 38px; height: 32px; border: 1px solid var(--line); border-radius: 9px;
@@ -266,6 +275,7 @@
           </div>
           <button id="calendarClose" class="close-btn" type="button">×</button>
         </header>
+        <div id="yearRow" class="year-row"></div>
         <div class="month-nav">
           <button id="prevMonth" class="month-btn" type="button">‹</button>
           <div id="monthLabel" class="month-label"></div>
@@ -506,7 +516,36 @@
     let calActiveUid=null, calSelected=new Set(), calYear=2025, calMonth=5;
     function openCalendar(uid){ calActiveUid=uid; const block=getBlockByUid(uid); calSelected=new Set(parseDateArray(block.querySelector('.field-date').value)); const first=uniqueSorted([...calSelected])[0]||toKey(new Date()); const d=toDate(first); calYear=d.getFullYear(); calMonth=d.getMonth(); renderCalendar(); updateCalPreview(); document.getElementById('calendarBackdrop').classList.add('show'); }
     function closeCalendar(){ document.getElementById('calendarBackdrop').classList.remove('show'); calActiveUid=null; calSelected=new Set(); }
-    function renderCalendar(){ document.getElementById('monthLabel').textContent=`${calYear}年${calMonth+1}月`; const first=new Date(calYear,calMonth,1); const last=new Date(calYear,calMonth+1,0); const grid=document.getElementById('dayGrid'); grid.innerHTML=''; for(let i=0;i<first.getDay();i++){ const e=document.createElement('div'); e.className='day-cell empty'; grid.appendChild(e);} for(let day=1;day<=last.getDate();day++){ const date=new Date(calYear,calMonth,day); const key=toKey(date); const btn=document.createElement('button'); btn.type='button'; btn.className='day-cell'; btn.textContent=day; if(date.getDay()===0) btn.classList.add('sunday'); if(date.getDay()===6) btn.classList.add('saturday'); if(calSelected.has(key)) btn.classList.add('selected'); btn.onclick=()=>{ if(calSelected.has(key)) calSelected.delete(key); else calSelected.add(key); renderCalendar(); updateCalPreview(); }; grid.appendChild(btn);} }
+    function renderCalendar(){
+      // ── 年ピル（前年〜3年後の5択） ──
+      const baseYear = new Date().getFullYear();
+      const yearRange = [baseYear-1, baseYear, baseYear+1, baseYear+2, baseYear+3];
+      if(!yearRange.includes(calYear)) yearRange.push(calYear);
+      yearRange.sort((a,b)=>a-b);
+      document.getElementById('yearRow').innerHTML = yearRange.map(y =>
+        `<button type="button" class="year-pill${y===calYear?' active':''}"
+          onclick="calYear=${y};renderCalendar();updateCalPreview();">${y}年</button>`
+      ).join('');
+      // ── 月ラベル（年はピルで表示するので月だけ） ──
+      document.getElementById('monthLabel').textContent = `${calMonth+1}月`;
+      // ── カレンダーグリッド ──
+      const first=new Date(calYear,calMonth,1);
+      const last=new Date(calYear,calMonth+1,0);
+      const grid=document.getElementById('dayGrid');
+      grid.innerHTML='';
+      for(let i=0;i<first.getDay();i++){ const e=document.createElement('div'); e.className='day-cell empty'; grid.appendChild(e); }
+      for(let day=1;day<=last.getDate();day++){
+        const date=new Date(calYear,calMonth,day);
+        const key=toKey(date);
+        const btn=document.createElement('button');
+        btn.type='button'; btn.className='day-cell'; btn.textContent=day;
+        if(date.getDay()===0) btn.classList.add('sunday');
+        if(date.getDay()===6) btn.classList.add('saturday');
+        if(calSelected.has(key)) btn.classList.add('selected');
+        btn.onclick=()=>{ if(calSelected.has(key)) calSelected.delete(key); else calSelected.add(key); renderCalendar(); updateCalPreview(); };
+        grid.appendChild(btn);
+      }
+    }
     function updateCalPreview(){ document.getElementById('datePreview').textContent='選択中：'+displayDateArray([...calSelected]); }
 
     // ===== 時間 =====
