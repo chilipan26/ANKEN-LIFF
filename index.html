@@ -67,9 +67,9 @@
     .copy-value .copy-icon { flex: 0 0 auto; color: var(--main); font-size: 10px; }
     .copy-value .copy-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .edit-input, .edit-textarea { width: 100%; border: 1px solid var(--line); border-radius: 7px;
-      background: #fff; color: var(--text); outline: none; padding: 7px 8px; font-size: 13px; line-height: 1.2; }
-    .edit-input { height: 34px; }
-    .edit-textarea { min-height: 44px; resize: vertical; }
+      background: #fff; color: var(--text); outline: none; padding: 6px 8px; font-size: 16px; line-height: 1.2; }
+    .edit-input { height: 38px; }
+    .edit-textarea { min-height: 46px; resize: vertical; }
     .edit-input:focus, .edit-textarea:focus { border-color: var(--main); box-shadow: 0 0 0 2px rgba(37,99,235,0.12); }
 
     .accordion-header { width: 100%; border: 0; background: #fff; padding: 9px; display: flex;
@@ -82,14 +82,14 @@
     .accordion-body { display: none; border-top: 1px solid var(--line); padding: 0; }
     .accordion.open .accordion-body { display: block; }
 
-    .date-block { padding: 8px 7px 9px; border-bottom: 1px solid var(--line); }
+    .date-block { padding: 3px 7px; border-bottom: 1px solid var(--line); }
     .date-block:nth-child(odd) { background: var(--zebra-a); }
     .date-block:nth-child(even) { background: var(--zebra-b); }
     .date-block:last-child { border-bottom: 0; }
     .date-title { display: flex; align-items: center; justify-content: space-between; gap: 6px; margin-bottom: 6px; }
     .date-title-main { min-width: 0; font-size: 14px; font-weight: 950; line-height: 1.28; color: #0f172a; }
     .block-discard-btn { flex: 0 0 auto; border: 1px solid #FCA5A5; background: #FEF2F2; color: #DC2626;
-      border-radius: 7px; width: 30px; height: 28px; font-size: 13px; cursor: pointer; }
+      border-radius: 7px; width: 30px; height: 26px; font-size: 13px; cursor: pointer; }
     .block-fields { display: grid; grid-template-columns: 1fr; gap: 6px; }
 
     .smart-date-row, .smart-time-row { display: grid; grid-template-columns: auto minmax(0, 1fr) 34px; gap: 4px; align-items: center; min-width: 0; }
@@ -151,11 +151,11 @@
     /* 日付ブロックのアコーディオン化 */
     .date-block .block-fields { display: none; }
     .date-block.open .block-fields { display: block; }
-    .date-title { display: grid; grid-template-columns: 1fr auto auto; align-items: center; gap: 6px;
-      padding: 4px 2px 6px; cursor: pointer; user-select: none; }
-    .date-title-main { font-size: 13px; font-weight: 900; line-height: 1.35; }
-    .block-chevron { width: 30px; height: 30px; border: 1px solid var(--line); border-radius: 8px;
-      background: #fff; font-size: 14px; color: var(--text); cursor: pointer; transition: transform 0.18s; padding: 0; }
+    .date-title { display: grid; grid-template-columns: 1fr auto auto; align-items: center; gap: 5px;
+      padding: 3px 2px; cursor: pointer; user-select: none; }
+    .date-title-main { font-size: 12.5px; font-weight: 900; line-height: 1.25; }
+    .block-chevron { width: 30px; height: 26px; border: 1px solid var(--line); border-radius: 7px;
+      background: #fff; font-size: 13px; color: var(--text); cursor: pointer; transition: transform 0.18s; padding: 0; }
     .date-block.open .block-chevron { transform: rotate(180deg); }
 
     /* 共通追加情報カード（手動入力情報） */
@@ -194,8 +194,8 @@
     .manual-badge { font-size: 9px; font-weight: 900; color: #B45309; background: #FEF3C7;
       border: 1px solid #FCD34D; border-radius: 999px; padding: 2px 6px; margin-left: 4px; }
     .meet-time-row { display: flex; gap: 4px; align-items: center; }
-    .mini-select { height: 34px; border: 1px solid var(--line); border-radius: 7px;
-      background: #fff; color: var(--text); font-size: 13px; font-weight: 800; padding: 0 4px; outline: none; }
+    .mini-select { height: 38px; border: 1px solid var(--line); border-radius: 7px;
+      background: #fff; color: var(--text); font-size: 16px; font-weight: 800; padding: 0 4px; outline: none; }
     .mini-select:focus { border-color: var(--main); }
     .modal-backdrop { position: fixed; inset: 0; z-index: 70; display: none; align-items: flex-end;
       justify-content: center; background: rgba(15,23,42,0.38); padding: 12px; }
@@ -288,7 +288,7 @@
       </section>
 
       <section class="panel right-panel" aria-label="編集エリア">
-        <section class="common-card open" id="commonCard">
+        <section class="common-card" id="commonCard">
           <div class="common-head" onclick="toggleCommonCard()">
             <h2>案件共通情報</h2>
             <span class="chevron">⌄</span>
@@ -318,7 +318,7 @@
           </div>
         </section>
 
-        <section class="extras-card open" id="extrasCard">
+        <section class="extras-card" id="extrasCard">
           <button class="accordion-header" type="button" onclick="toggleExtrasCard()">
             <span>手動追加情報</span><span class="chevron">⌄</span>
           </button>
@@ -601,7 +601,7 @@
             </article>`;
         });
 
-        acc.classList.remove('open'); // ④ 初期=閉
+        acc.classList.add('open'); // ポジションは初期=開（全体俯瞰）
         acc.innerHTML=`
           <button class="accordion-header" type="button">
             <span class="position-info"><span class="position-name">${escapeHtml(posType)}</span><span class="position-count">${arr.length}条件</span></span>
@@ -616,7 +616,7 @@
     }
 
     function bindEvents(){
-      document.querySelectorAll('.accordion-header').forEach(h=>{ h.onclick=(e)=>{ if(e.target.closest('.block-chevron, .block-discard-btn')) return; h.closest('.accordion').classList.toggle('open'); }; });
+      document.querySelectorAll('#positionAccordions .accordion-header').forEach(h=>{ h.onclick=(e)=>{ if(e.target.closest('.block-chevron, .block-discard-btn')) return; const acc=h.closest('.accordion'); if(acc) acc.classList.toggle('open'); }; });
       // 日付ブロックの開閉（ヘッダー領域タップで開閉、ゴミ箱は伝播停止）
       document.querySelectorAll('[data-block-toggle]').forEach(h=>{
         h.onclick=(e)=>{ if(e.target.closest('.block-discard-btn')) return; h.closest('.date-block').classList.toggle('open'); };
