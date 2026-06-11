@@ -26,7 +26,7 @@
     .app { width: 100vw; height: 100dvh; display: flex; flex-direction: column; background: var(--bg); }
 
     .topbar { position: fixed; inset: 0 0 auto 0; height: var(--header-h); z-index: 30;
-      display: grid; grid-template-columns: auto 1fr auto auto; align-items: center; gap: 6px;
+      display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 6px;
       padding: calc(6px + env(safe-area-inset-top)) 8px 6px 8px;
       background: rgba(255,255,255,0.96); border-bottom: 1px solid var(--line); box-shadow: var(--shadow); }
     .count-badge { white-space: nowrap; font-size: 11px; font-weight: 800; color: #fff;
@@ -128,6 +128,24 @@
     .checkbox-row input { width: 18px; height: 18px; }
     .checkbox-row label { font-size: 12px; font-weight: 800; }
 
+    .addraw-btn { width: 100%; margin-top: 10px; border: 1.5px dashed var(--main); background: var(--soft-blue);
+      color: var(--main-dark); border-radius: 9px; padding: 9px; font-size: 11.5px; font-weight: 900; cursor: pointer; }
+    .addraw-area { display: grid; gap: 6px; margin-top: 7px; }
+    .addraw-save { border: 0; border-radius: 8px; background: var(--main); color: #fff;
+      padding: 9px; font-size: 12px; font-weight: 900; cursor: pointer; }
+    .manual-add-row { display: grid; grid-template-columns: 86px 1fr; gap: 7px; margin-bottom: 8px; }
+    .manual-pos-select { height: 40px; border: 1px solid var(--line); border-radius: 9px;
+      background: #fff; font-size: 13px; font-weight: 900; padding: 0 8px; }
+    .manual-add-btn { height: 40px; border: 1.5px dashed var(--main); background: var(--soft-blue);
+      color: var(--main-dark); border-radius: 9px; font-size: 12px; font-weight: 900; cursor: pointer; }
+    .manual-remove-btn { flex: 0 0 auto; border: 1px solid #FCA5A5; background: #FEF2F2; color: #DC2626;
+      border-radius: 7px; width: 30px; height: 28px; font-size: 13px; cursor: pointer; }
+    .manual-badge { font-size: 9px; font-weight: 900; color: #B45309; background: #FEF3C7;
+      border: 1px solid #FCD34D; border-radius: 999px; padding: 2px 6px; margin-left: 4px; }
+    .meet-time-row { display: flex; gap: 4px; align-items: center; }
+    .mini-select { height: 34px; border: 1px solid var(--line); border-radius: 7px;
+      background: #fff; color: var(--text); font-size: 13px; font-weight: 800; padding: 0 4px; outline: none; }
+    .mini-select:focus { border-color: var(--main); }
     .modal-backdrop { position: fixed; inset: 0; z-index: 70; display: none; align-items: flex-end;
       justify-content: center; background: rgba(15,23,42,0.38); padding: 12px; }
     .modal-backdrop.show { display: flex; }
@@ -183,7 +201,7 @@
 
     @media (min-width: 700px) {
       :root { --header-h: 58px; --footer-h: 70px; }
-      .topbar { grid-template-columns: auto minmax(260px, 1fr) auto auto; gap: 10px; padding-left: 14px; padding-right: 14px; }
+      .topbar { grid-template-columns: auto minmax(260px, 1fr); gap: 10px; padding-left: 14px; padding-right: 14px; }
       .left-panel { padding: 12px 12px 22px; }
       .right-panel { padding: 12px 14px calc(var(--footer-h) + 18px + env(safe-area-inset-bottom)); }
       .raw-text { font-size: 12.5px; }
@@ -193,8 +211,7 @@
       .modal-backdrop { align-items: center; }
     }
     @media (max-width: 360px) {
-      .topbar { grid-template-columns: auto 1fr auto; }
-      .topbar .nav-btn.prev { display: none; }
+      .topbar { grid-template-columns: auto 1fr; }
       .content { grid-template-columns: minmax(120px, 39%) minmax(188px, 61%); }
       .action-footer { left: 39%; }
     }
@@ -205,14 +222,17 @@
     <header class="topbar">
       <div class="count-badge" id="countBadge">未処理 0件</div>
       <select class="case-select" id="caseSelect" aria-label="案件選択" onchange="handleCaseChange()"></select>
-      <button class="nav-btn prev" type="button" onclick="prevCase()">前へ</button>
-      <button class="nav-btn" type="button" onclick="nextCase()">次へ</button>
     </header>
 
     <main class="content">
       <section class="panel left-panel" aria-label="原文">
         <h1 class="section-title">原文</h1>
         <pre class="raw-text" id="rawText">読み込み中...</pre>
+        <button type="button" id="addRawBtn" class="addraw-btn" onclick="toggleAddRaw()">＋ 原文を追加</button>
+        <div id="addRawArea" class="addraw-area" style="display:none;">
+          <textarea id="addRawInput" class="edit-textarea" rows="5" placeholder="追加の原文（LINE文など）を貼り付け"></textarea>
+          <button type="button" class="addraw-save" onclick="saveAddRaw()">追加原文を保存</button>
+        </div>
       </section>
 
       <section class="panel right-panel" aria-label="編集エリア">
@@ -247,6 +267,13 @@
         </section>
 
         <div id="positionAccordions"></div>
+
+        <div class="manual-add-row">
+          <select id="manualPosSelect" class="manual-pos-select">
+            <option value="D">D</option><option value="AD">AD</option><option value="ST">ST</option>
+          </select>
+          <button type="button" class="manual-add-btn" onclick="addManualBlock()">＋ 日程ブロックを手動追加</button>
+        </div>
 
         <div class="checkbox-row">
           <input type="checkbox" id="registerToCase" checked>
@@ -366,9 +393,12 @@
     async function loadCasesData(){
       try{
         showLoading(true);
-        const res=await fetch(GAS_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},redirect:'follow',body:JSON.stringify({action:'getUnconfirmedCases'})});
+        const res=await fetch(GAS_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},redirect:'follow',body:JSON.stringify({action:'getLiff1AllCases'})});
         const data=await res.json();
-        casesData=data.cases||[];
+        if(!data.success){ showLoading(false); showMessage('読み込みエラー: '+(data.error||'不明'),true); return; }
+        const unconfirmed=(data.unconfirmed||[]).map(c=>({...c,isConfirmed:false}));
+        const confirmed=(data.confirmed||[]).map(c=>({...c,isConfirmed:true}));
+        casesData=[...unconfirmed,...confirmed];
         currentIndex=0;
         showLoading(false);
         if(casesData.length===0){ renderEmpty(); return; }
@@ -387,9 +417,10 @@
     function populateCaseSelect(){
       const sel=document.getElementById('caseSelect');
       sel.innerHTML='';
-      casesData.forEach((item,i)=>{ const o=document.createElement('option'); o.value=i; o.textContent=`${i+1}. ${item.caseName}`; sel.appendChild(o); });
+      casesData.forEach((item,i)=>{ const o=document.createElement('option'); o.value=i; o.textContent=`${item.isConfirmed?'✅ ':''}${i+1}. ${item.caseName}`; sel.appendChild(o); });
       sel.value=currentIndex;
-      document.getElementById('countBadge').textContent=`未処理 ${casesData.length}件`;
+      const 未処理数=casesData.filter(c=>!c.isConfirmed).length;
+      document.getElementById('countBadge').textContent=`未処理 ${未処理数}件`;
     }
 
     function displayCase(index){
@@ -479,6 +510,7 @@
                     <button class="copy-value" type="button" data-copy="${withComma(p.meal)}"><span class="copy-icon">⧉</span><span class="copy-text">${withComma(p.meal)}</span></button></div>
                   <input class="edit-input field-meal" type="text" inputmode="numeric" placeholder="修正・追加">
                 </div>
+                ${extraFieldsHtml()}
                 <div class="field full">
                   <div class="label-value"><span class="label">特記:</span>
                     <button class="copy-value" type="button" data-copy="${escapeHtml(p.remark||'')}"><span class="copy-icon">⧉</span><span class="copy-text">${escapeHtml(p.remark||'')}</span></button></div>
@@ -508,6 +540,7 @@
       document.querySelectorAll('[data-date-edit]').forEach(b=>{ b.onclick=(e)=>{ e.stopPropagation(); openCalendar(b.dataset.dateEdit); }; });
       document.querySelectorAll('[data-time-edit]').forEach(b=>{ b.onclick=(e)=>{ e.stopPropagation(); openTimeModal(b.dataset.timeEdit); }; });
       document.querySelectorAll('[data-discard-row]').forEach(b=>{ b.onclick=(e)=>{ e.stopPropagation(); discardRow(b.dataset.discardRow); }; });
+      document.querySelectorAll('[data-manual-remove]').forEach(b=>{ b.onclick=(e)=>{ e.stopPropagation(); b.closest('.date-block').remove(); }; });
     }
 
     function getBlockByUid(uid){ const [pos,idx]=uid.split('__'); return document.querySelector(`.date-block[data-pos="${pos}"][data-idx="${idx}"]`); }
@@ -565,26 +598,61 @@
         const cn=document.getElementById('caseName').value.trim();
         const cl=document.getElementById('client').value.trim();
         const ct=document.getElementById('contact').value.trim();
-        const updated={ extId:c.extId, caseName:cn||c.caseName||'', client:cl||c.client||'', contact:ct||c.contact||'', registerToCase:document.getElementById('registerToCase').checked, positions:{} };
+        const updated={ extId:c.extId, caseName:cn||c.caseName||'', client:cl||c.client||'', contact:ct||c.contact||'', registerToCase:document.getElementById('registerToCase').checked, positions:{}, manualBlocks:[] };
         const numClean=(s)=>parseInt(String(s).replace(/[^0-9-]/g,''),10)||0;
+        let manualError='';
 
         document.querySelectorAll('#positionAccordions .date-block').forEach(block=>{
           const pos=block.dataset.pos;
+          const dateVal=block.querySelector('.field-date').value||'';
+          const wtVal=block.querySelector('.field-worktime').value||'';
+          const remarkIn=block.querySelector('.field-remark').value.trim();
+          const extras={
+            venue: block.querySelector('.field-venue').value.trim(),
+            meetPlace: block.querySelector('.field-meetplace').value.trim(),
+            meetTime: getMeetTime(block),
+            transportType: block.querySelector('.field-transporttype').value,
+            appearance: block.querySelector('.field-appearance').value.trim()
+          };
+
+          // ── ③ 手動追加ブロック（AI抽出を経由しない・直接A_案件情報へ）──
+          if(block.dataset.manual==='1'){
+            const countIn=block.querySelector('.field-count').value.trim();
+            const priceIn=block.querySelector('.field-price').value.trim();
+            const hasContent=countIn||priceIn||extras.venue||extras.meetPlace||extras.appearance||remarkIn;
+            if(!dateVal){ if(hasContent) manualError='手動ブロックの日付が未設定です'; return; }
+            updated.manualBlocks.push({
+              pos: pos,
+              date: dateVal,
+              workTime: wtVal,
+              count: countIn,
+              unitPrice: numClean(priceIn),
+              transport: numClean(block.querySelector('.field-transport').value),
+              meal: numClean(block.querySelector('.field-meal').value),
+              remark: remarkIn,
+              ...extras
+            });
+            return;
+          }
+
+          // ── 既存（AI抽出）ブロック ──
           if(!updated.positions[pos]) updated.positions[pos]=[];
           const cv=block.querySelectorAll('.copy-value');
           const priceIn=block.querySelector('.field-price').value.trim();
           const transIn=block.querySelector('.field-transport').value.trim();
           const mealIn=block.querySelector('.field-meal').value.trim();
-          const remarkIn=block.querySelector('.field-remark').value.trim();
           updated.positions[pos].push({
-            date: block.querySelector('.field-date').value||'',
-            workTime: block.querySelector('.field-worktime').value||'',
+            date: dateVal,
+            workTime: wtVal,
             unitPrice: priceIn!==''?numClean(priceIn):numClean(cv[0]?.dataset.copy),
             transport: transIn!==''?numClean(transIn):numClean(cv[1]?.dataset.copy),
             meal: mealIn!==''?numClean(mealIn):numClean(cv[2]?.dataset.copy),
-            remark: remarkIn!==''?remarkIn:(cv[3]?.dataset.copy||'')
+            remark: remarkIn!==''?remarkIn:(cv[3]?.dataset.copy||''),
+            ...extras
           });
         });
+
+        if(manualError){ showLoading(false); showMessage(manualError,true); return; }
 
         const res=await fetch(GAS_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},redirect:'follow',body:JSON.stringify({action:'saveCaseConfirmation',data:updated})});
         const result=await res.json();
@@ -639,6 +707,144 @@
       document.getElementById('confirmTime').onclick=()=>{ if(!timeActiveUid) return; const val=formatTimeStorage(getTimeParts()); const block=getBlockByUid(timeActiveUid); block.querySelector('.field-worktime').value=val; const disp=formatTimeDisplay(val); const t=block.querySelector('.smart-time-display'); t.querySelector('.time-text').textContent=disp; t.dataset.copy=disp; closeTimeModal(); showMessage('稼働時間を反映しました',false); };
 
       document.addEventListener('keydown',(e)=>{ if(e.key==='Escape'){ closeCalendar(); closeTimeModal(); } });
+    }
+
+    // ===== 新フィールド（会場・集合場所・集合時間・交通費_種類・アピアランス） =====
+    function hourOptions(){ let h='<option value="">--</option>'; for(let i=0;i<24;i++){ const v=String(i).padStart(2,'0'); h+=`<option value="${v}">${v}</option>`; } return h; }
+    function minOptions(){ return '<option value="">--</option>'+['00','15','30','45'].map(v=>`<option value="${v}">${v}</option>`).join(''); }
+    function extraFieldsHtml(){
+      return `
+                <div class="field">
+                  <div class="label-value"><span class="label">会場:</span></div>
+                  <input class="edit-input field-venue" type="text" placeholder="例：京都国際会議場" autocomplete="off">
+                </div>
+                <div class="field">
+                  <div class="label-value"><span class="label">集合場所:</span></div>
+                  <input class="edit-input field-meetplace" type="text" placeholder="例：正面入口" autocomplete="off">
+                </div>
+                <div class="field">
+                  <div class="label-value"><span class="label">集合時間:</span></div>
+                  <div class="meet-time-row">
+                    <select class="mini-select field-meettime-h">${hourOptions()}</select>
+                    <span style="font-weight:900;">:</span>
+                    <select class="mini-select field-meettime-m">${minOptions()}</select>
+                  </div>
+                </div>
+                <div class="field">
+                  <div class="label-value"><span class="label">交通費_種類:</span></div>
+                  <select class="edit-input field-transporttype">
+                    <option value="">未選択</option><option value="一律">一律</option><option value="実費">実費</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <div class="label-value"><span class="label">アピアランス:</span></div>
+                  <input class="edit-input field-appearance" type="text" placeholder="例：黒スーツ・スニーカー可" autocomplete="off">
+                </div>`;
+    }
+    function getMeetTime(block){
+      const h=block.querySelector('.field-meettime-h').value;
+      const m=block.querySelector('.field-meettime-m').value;
+      return h!=='' ? `${h}:${m||'00'}` : '';
+    }
+
+    // ===== ③ 手動ブロック追加 =====
+    let manualSeq=0;
+    function ensureAccordion(pos){
+      let acc=document.querySelector(`.accordion[data-position="${pos}"]`);
+      if(acc) return acc;
+      acc=document.createElement('section');
+      acc.className='accordion open';
+      acc.dataset.position=pos;
+      acc.innerHTML=`<button class="accordion-header" type="button"><span class="position-info"><span class="position-name">${escapeHtml(pos)}</span><span class="position-count">手動追加</span></span><span class="chevron">⌄</span></button><div class="accordion-body"></div>`;
+      document.getElementById('positionAccordions').appendChild(acc);
+      return acc;
+    }
+    function manualBlockHtml(pos, idx){
+      const uid=`${pos}__${idx}`;
+      return `
+        <article class="date-block" data-pos="${pos}" data-idx="${idx}" data-manual="1">
+          <div class="date-title">
+            <div class="date-title-main" data-block-title="${uid}">日付未設定<span class="manual-badge">手動</span></div>
+            <button type="button" class="manual-remove-btn" data-manual-remove="${uid}" title="このブロックを取り消し">✕</button>
+          </div>
+          <div class="block-fields">
+            <div class="field full">
+              <div class="smart-date-row">
+                <span class="label">日付:</span>
+                <button class="smart-date-display" type="button"><span class="copy-icon">📅</span><span class="date-text">未設定</span></button>
+                <button class="calendar-open-btn" type="button" data-date-edit="${uid}">📅</button>
+              </div>
+              <input type="hidden" class="field-date" value="">
+            </div>
+            <div class="field">
+              <div class="smart-time-row">
+                <span class="label">稼働時間:</span>
+                <button class="smart-time-display" type="button"><span class="copy-icon">🕐</span><span class="time-text">未設定</span></button>
+                <button class="time-open-btn" type="button" data-time-edit="${uid}">🕐</button>
+              </div>
+              <input type="hidden" class="field-worktime" value="">
+            </div>
+            <div class="field">
+              <div class="label-value"><span class="label">必要人数:</span></div>
+              <input class="edit-input field-count" type="text" inputmode="numeric" placeholder="例：3">
+            </div>
+            <div class="field">
+              <div class="label-value"><span class="label">入り単価:</span></div>
+              <input class="edit-input field-price" type="text" inputmode="numeric" placeholder="例：16500">
+            </div>
+            <div class="field">
+              <div class="label-value"><span class="label">交通費:</span></div>
+              <input class="edit-input field-transport" type="text" inputmode="numeric" placeholder="例：2000">
+            </div>
+            <div class="field">
+              <div class="label-value"><span class="label">食費:</span></div>
+              <input class="edit-input field-meal" type="text" inputmode="numeric" placeholder="例：800">
+            </div>
+            ${extraFieldsHtml()}
+            <div class="field full">
+              <div class="label-value"><span class="label">特記:</span></div>
+              <textarea class="edit-textarea field-remark" placeholder="特記事項"></textarea>
+            </div>
+          </div>
+        </article>`;
+    }
+    function addManualBlock(){
+      if(casesData.length===0){ showMessage('案件がありません',true); return; }
+      const pos=document.getElementById('manualPosSelect').value;
+      const acc=ensureAccordion(pos);
+      const idx='m'+(++manualSeq);
+      acc.classList.add('open');
+      acc.querySelector('.accordion-body').insertAdjacentHTML('beforeend', manualBlockHtml(pos, idx));
+      bindEvents();
+      showMessage('ブロック追加（保存で確定）',false);
+    }
+
+    // ===== ⑦ 追加原文 =====
+    function toggleAddRaw(){
+      const a=document.getElementById('addRawArea');
+      a.style.display = (a.style.display==='none') ? 'grid' : 'none';
+    }
+    async function saveAddRaw(){
+      if(casesData.length===0){ showMessage('案件がありません',true); return; }
+      const c=casesData[currentIndex];
+      const text=document.getElementById('addRawInput').value.trim();
+      if(!text){ showMessage('原文が空です',true); return; }
+      if(!c.logId){ showMessage('ログIDが取得できません',true); return; }
+      try{
+        showLoading(true);
+        const res=await fetch(GAS_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},redirect:'follow',body:JSON.stringify({action:'addRawText',logId:c.logId,text:text})});
+        const r=await res.json();
+        showLoading(false);
+        if(r.success){
+          showMessage('✅ 追加原文を保存しました',false);
+          document.getElementById('addRawInput').value='';
+          document.getElementById('addRawArea').style.display='none';
+          c.rawText=(c.rawText||'')+'\n\n━━━ 追加原文 ━━━\n\n'+text;
+          document.getElementById('rawText').textContent=c.rawText;
+        }else{
+          showMessage('保存失敗：'+(r.error||'不明'),true);
+        }
+      }catch(e){ showLoading(false); showMessage('エラー：'+e.message,true); }
     }
 
     window.onload=()=>{ setupModals(); initLiff(); };
