@@ -26,7 +26,7 @@
     .app { width: 100vw; height: 100dvh; display: flex; flex-direction: column; background: var(--bg); }
 
     .topbar { position: fixed; inset: 0 0 auto 0; height: var(--header-h); z-index: 30;
-      display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 6px;
+      display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 6px;
       padding: calc(6px + env(safe-area-inset-top)) 8px 6px 8px;
       background: rgba(255,255,255,0.96); border-bottom: 1px solid var(--line); box-shadow: var(--shadow); }
     .count-badge { white-space: nowrap; font-size: 11px; font-weight: 800; color: #fff;
@@ -128,6 +128,57 @@
     .checkbox-row input { width: 18px; height: 18px; }
     .checkbox-row label { font-size: 12px; font-weight: 800; }
 
+    /* トップバー破棄ボタン */
+    .top-discard-btn { height: 34px; min-width: 38px; padding: 0 8px; border: 1px solid #FCA5A5;
+      background: #FEF2F2; color: #DC2626; border-radius: 9px; font-size: 14px; font-weight: 900; cursor: pointer; }
+    .top-discard-btn:active { background: #FECACA; }
+
+    /* ポジション色帯（スクロール時の視認性） */
+    .accordion[data-position="D"] > .accordion-header,
+    .accordion[data-position="AD"] > .accordion-header,
+    .accordion[data-position="ST"] > .accordion-header { color: #fff; padding: 11px 12px; }
+    .accordion[data-position="D"] > .accordion-header { background: #0B5645; }
+    .accordion[data-position="AD"] > .accordion-header { background: #1E40AF; }
+    .accordion[data-position="ST"] > .accordion-header { background: #C2410C; }
+    .accordion[data-position="D"] > .accordion-header .position-name,
+    .accordion[data-position="AD"] > .accordion-header .position-name,
+    .accordion[data-position="ST"] > .accordion-header .position-name { color: #fff; }
+    .accordion[data-position="D"] > .accordion-header .position-count,
+    .accordion[data-position="AD"] > .accordion-header .position-count,
+    .accordion[data-position="ST"] > .accordion-header .position-count {
+      color: #fff; background: rgba(255,255,255,0.22); border-color: transparent; }
+
+    /* 日付ブロックのアコーディオン化 */
+    .date-block .block-fields { display: none; }
+    .date-block.open .block-fields { display: block; }
+    .date-title { display: grid; grid-template-columns: 1fr auto auto; align-items: center; gap: 6px;
+      padding: 4px 2px 6px; cursor: pointer; user-select: none; }
+    .date-title-main { font-size: 13px; font-weight: 900; line-height: 1.35; }
+    .block-chevron { width: 30px; height: 30px; border: 1px solid var(--line); border-radius: 8px;
+      background: #fff; font-size: 14px; color: var(--text); cursor: pointer; transition: transform 0.18s; padding: 0; }
+    .date-block.open .block-chevron { transform: rotate(180deg); }
+
+    /* 共通追加情報カード（手動入力情報） */
+    .extras-card { background: #fff; border: 1px solid var(--line); border-radius: 10px;
+      margin-top: 9px; overflow: hidden; }
+    .extras-card .accordion-header { width: 100%; border: 0; background: #475569; color: #fff;
+      padding: 10px 12px; display: flex; align-items: center; justify-content: space-between;
+      gap: 8px; cursor: pointer; font-size: 13px; font-weight: 900; }
+    .extras-card .accordion-header .chevron { transition: transform 0.18s; color: #fff; }
+    .extras-card.open .accordion-header .chevron { transform: rotate(180deg); }
+    .extras-card .extras-body { display: none; padding: 10px 11px 11px; border-top: 1px solid var(--line); }
+    .extras-card.open .extras-body { display: block; }
+
+    /* 共通情報カードもアコーディオン化 */
+    .common-card .common-head { cursor: pointer; user-select: none; }
+    .common-card .common-head .chevron { color: var(--muted); transition: transform 0.18s; font-size: 14px; }
+    .common-card.open .common-head .chevron { transform: rotate(180deg); }
+    .common-card .field-list { display: none; padding: 0 11px 11px; }
+    .common-card.open .field-list { display: grid; }
+
+    /* カレンダー固定高（月遷移ボタンの位置ズレ防止） */
+    .day-grid { min-height: 304px; align-content: start; }
+
     .addraw-btn { width: 100%; margin-top: 10px; border: 1.5px dashed var(--main); background: var(--soft-blue);
       color: var(--main-dark); border-radius: 9px; padding: 9px; font-size: 11.5px; font-weight: 900; cursor: pointer; }
     .addraw-area { display: grid; gap: 6px; margin-top: 7px; }
@@ -201,7 +252,7 @@
 
     @media (min-width: 700px) {
       :root { --header-h: 58px; --footer-h: 70px; }
-      .topbar { grid-template-columns: auto minmax(260px, 1fr); gap: 10px; padding-left: 14px; padding-right: 14px; }
+      .topbar { grid-template-columns: auto minmax(260px, 1fr) auto; gap: 10px; padding-left: 14px; padding-right: 14px; }
       .left-panel { padding: 12px 12px 22px; }
       .right-panel { padding: 12px 14px calc(var(--footer-h) + 18px + env(safe-area-inset-bottom)); }
       .raw-text { font-size: 12.5px; }
@@ -211,7 +262,7 @@
       .modal-backdrop { align-items: center; }
     }
     @media (max-width: 360px) {
-      .topbar { grid-template-columns: auto 1fr; }
+      .topbar { grid-template-columns: auto 1fr auto; }
       .content { grid-template-columns: minmax(120px, 39%) minmax(188px, 61%); }
       .action-footer { left: 39%; }
     }
@@ -222,6 +273,7 @@
     <header class="topbar">
       <div class="count-badge" id="countBadge">未処理 0件</div>
       <select class="case-select" id="caseSelect" aria-label="案件選択" onchange="handleCaseChange()"></select>
+      <button type="button" id="topDiscardBtn" class="top-discard-btn" onclick="discardCase()" title="この案件を破棄">🗑</button>
     </header>
 
     <main class="content">
@@ -236,10 +288,10 @@
       </section>
 
       <section class="panel right-panel" aria-label="編集エリア">
-        <section class="common-card">
-          <div class="common-head">
+        <section class="common-card open" id="commonCard">
+          <div class="common-head" onclick="toggleCommonCard()">
             <h2>案件共通情報</h2>
-            <span class="status-chip">入力なし＝元値維持</span>
+            <span class="chevron">⌄</span>
           </div>
           <div class="field-list">
             <div class="field full">
@@ -266,6 +318,34 @@
           </div>
         </section>
 
+        <section class="extras-card open" id="extrasCard">
+          <button class="accordion-header" type="button" onclick="toggleExtrasCard()">
+            <span>手動追加情報</span><span class="chevron">⌄</span>
+          </button>
+          <div class="extras-body">
+            <div class="field-list">
+              <div class="field"><div class="label-value"><span class="label">会場:</span></div>
+                <input class="edit-input" id="commonVenue" type="text" placeholder="例：京都国際会議場" autocomplete="off"></div>
+              <div class="field"><div class="label-value"><span class="label">集合場所:</span></div>
+                <input class="edit-input" id="commonMeetPlace" type="text" placeholder="例：正面入口" autocomplete="off"></div>
+              <div class="field"><div class="label-value"><span class="label">集合時間:</span></div>
+                <div class="meet-time-row">
+                  <select class="mini-select" id="commonMeetTimeH"></select>
+                  <span style="font-weight:900;">:</span>
+                  <select class="mini-select" id="commonMeetTimeM"></select>
+                </div>
+              </div>
+              <div class="field"><div class="label-value"><span class="label">アピアランス:</span></div>
+                <input class="edit-input" id="commonAppearance" type="text" placeholder="例：黒スーツ・スニーカー可" autocomplete="off"></div>
+              <div class="field full"><div class="label-value"><span class="label">特記事項:</span></div>
+                <textarea class="edit-textarea" id="commonRemark" placeholder="案件全体の特記事項（各ポジションで上書き可）"></textarea></div>
+            </div>
+            <div style="font-size:10.5px; color:var(--muted); margin-top:8px; font-weight:800;">
+              ※ここで入れた値は各ポジションの初期値になります。ポジション側で空欄なら共通値、入力すれば個別上書きされます。
+            </div>
+          </div>
+        </section>
+
         <div id="positionAccordions"></div>
 
         <div class="manual-add-row">
@@ -280,7 +360,6 @@
           <label for="registerToCase">この案件を案件情報に登録する</label>
         </div>
 
-        <button type="button" id="discardBtn" onclick="discardCase()" style="width:100%;border:1px solid #FCA5A5;background:#FEF2F2;color:#DC2626;border-radius:10px;padding:10px;font-size:12px;font-weight:900;cursor:pointer;margin-bottom:8px;">🗑 この案件を破棄（重複時など）</button>
       </section>
     </main>
 
@@ -474,9 +553,10 @@
           const wtDisp=formatTimeDisplay(wt);
           blocksHtml+=`
             <article class="date-block" data-pos="${posType}" data-idx="${idx}" data-rowindex="${p.rowIndex}">
-              <div class="date-title">
+              <div class="date-title" data-block-toggle="${uid}">
                 <div class="date-title-main" data-block-title="${uid}">${escapeHtml(dateDisp)}</div>
                 <button type="button" class="block-discard-btn" data-discard-row="${p.rowIndex}" title="このセクションを破棄">🗑</button>
+                <button type="button" class="block-chevron" data-block-chevron="${uid}" title="展開/折りたたみ">⌄</button>
               </div>
               <div class="block-fields">
                 <div class="field full">
@@ -505,6 +585,7 @@
                     <button class="copy-value" type="button" data-copy="${withComma(p.transport)}"><span class="copy-icon">⧉</span><span class="copy-text">${withComma(p.transport)}</span></button></div>
                   <input class="edit-input field-transport" type="text" inputmode="numeric" placeholder="修正・追加">
                 </div>
+                ${transportTypeHtml()}
                 <div class="field">
                   <div class="label-value"><span class="label">食費:</span>
                     <button class="copy-value" type="button" data-copy="${withComma(p.meal)}"><span class="copy-icon">⧉</span><span class="copy-text">${withComma(p.meal)}</span></button></div>
@@ -520,6 +601,7 @@
             </article>`;
         });
 
+        acc.classList.remove('open'); // ④ 初期=閉
         acc.innerHTML=`
           <button class="accordion-header" type="button">
             <span class="position-info"><span class="position-name">${escapeHtml(posType)}</span><span class="position-count">${arr.length}条件</span></span>
@@ -530,10 +612,15 @@
       });
 
       bindEvents();
+      refreshCommonCopyButtons();
     }
 
     function bindEvents(){
-      document.querySelectorAll('.accordion-header').forEach(h=>{ h.onclick=()=>h.closest('.accordion').classList.toggle('open'); });
+      document.querySelectorAll('.accordion-header').forEach(h=>{ h.onclick=(e)=>{ if(e.target.closest('.block-chevron, .block-discard-btn')) return; h.closest('.accordion').classList.toggle('open'); }; });
+      // 日付ブロックの開閉（ヘッダー領域タップで開閉、ゴミ箱は伝播停止）
+      document.querySelectorAll('[data-block-toggle]').forEach(h=>{
+        h.onclick=(e)=>{ if(e.target.closest('.block-discard-btn')) return; h.closest('.date-block').classList.toggle('open'); };
+      });
       document.querySelectorAll('#positionAccordions .copy-value').forEach(el=>{ el.onclick=(e)=>{ e.stopPropagation(); copyText(el.dataset.copy||el.innerText.trim()); }; });
       document.querySelectorAll('.smart-date-display').forEach(el=>{ el.onclick=(e)=>{ e.stopPropagation(); copyText(el.dataset.copy||el.innerText.trim()); }; });
       document.querySelectorAll('.smart-time-display').forEach(el=>{ el.onclick=(e)=>{ e.stopPropagation(); copyText(el.dataset.copy||el.innerText.trim()); }; });
@@ -607,12 +694,13 @@
           const dateVal=block.querySelector('.field-date').value||'';
           const wtVal=block.querySelector('.field-worktime').value||'';
           const remarkIn=block.querySelector('.field-remark').value.trim();
+          const common=getCommonExtras();
           const extras={
-            venue: block.querySelector('.field-venue').value.trim(),
-            meetPlace: block.querySelector('.field-meetplace').value.trim(),
-            meetTime: getMeetTime(block),
+            venue: block.querySelector('.field-venue').value.trim() || common.venue,
+            meetPlace: block.querySelector('.field-meetplace').value.trim() || common.meetPlace,
+            meetTime: getMeetTime(block) || common.meetTime,
             transportType: block.querySelector('.field-transporttype').value,
-            appearance: block.querySelector('.field-appearance').value.trim()
+            appearance: block.querySelector('.field-appearance').value.trim() || common.appearance
           };
 
           // ── ③ 手動追加ブロック（AI抽出を経由しない・直接A_案件情報へ）──
@@ -629,7 +717,7 @@
               unitPrice: numClean(priceIn),
               transport: numClean(block.querySelector('.field-transport').value),
               meal: numClean(block.querySelector('.field-meal').value),
-              remark: remarkIn,
+              remark: remarkIn || getCommonExtras().remark,
               ...extras
             });
             return;
@@ -647,7 +735,7 @@
             unitPrice: priceIn!==''?numClean(priceIn):numClean(cv[0]?.dataset.copy),
             transport: transIn!==''?numClean(transIn):numClean(cv[1]?.dataset.copy),
             meal: mealIn!==''?numClean(mealIn):numClean(cv[2]?.dataset.copy),
-            remark: remarkIn!==''?remarkIn:(cv[3]?.dataset.copy||''),
+            remark: remarkIn!==''?remarkIn:(getCommonExtras().remark || cv[3]?.dataset.copy||''),
             ...extras
           });
         });
@@ -712,18 +800,31 @@
     // ===== 新フィールド（会場・集合場所・集合時間・交通費_種類・アピアランス） =====
     function hourOptions(){ let h='<option value="">--</option>'; for(let i=0;i<24;i++){ const v=String(i).padStart(2,'0'); h+=`<option value="${v}">${v}</option>`; } return h; }
     function minOptions(){ return '<option value="">--</option>'+['00','15','30','45'].map(v=>`<option value="${v}">${v}</option>`).join(''); }
+    function transportTypeHtml(){
+      return `
+                <div class="field">
+                  <div class="label-value"><span class="label">交通費_種類:</span>
+                    <button class="copy-value" type="button" data-common-copy="transportType"><span class="copy-icon">⧉</span><span class="copy-text">未選択</span></button></div>
+                  <select class="edit-input field-transporttype">
+                    <option value="">共通値を使用</option><option value="一律">一律</option><option value="実費">実費</option>
+                  </select>
+                </div>`;
+    }
     function extraFieldsHtml(){
       return `
                 <div class="field">
-                  <div class="label-value"><span class="label">会場:</span></div>
-                  <input class="edit-input field-venue" type="text" placeholder="例：京都国際会議場" autocomplete="off">
+                  <div class="label-value"><span class="label">会場:</span>
+                    <button class="copy-value" type="button" data-common-copy="venue"><span class="copy-icon">⧉</span><span class="copy-text">—</span></button></div>
+                  <input class="edit-input field-venue" type="text" placeholder="入力なし＝共通値" autocomplete="off">
                 </div>
                 <div class="field">
-                  <div class="label-value"><span class="label">集合場所:</span></div>
-                  <input class="edit-input field-meetplace" type="text" placeholder="例：正面入口" autocomplete="off">
+                  <div class="label-value"><span class="label">集合場所:</span>
+                    <button class="copy-value" type="button" data-common-copy="meetPlace"><span class="copy-icon">⧉</span><span class="copy-text">—</span></button></div>
+                  <input class="edit-input field-meetplace" type="text" placeholder="入力なし＝共通値" autocomplete="off">
                 </div>
                 <div class="field">
-                  <div class="label-value"><span class="label">集合時間:</span></div>
+                  <div class="label-value"><span class="label">集合時間:</span>
+                    <button class="copy-value" type="button" data-common-copy="meetTime"><span class="copy-icon">⧉</span><span class="copy-text">—</span></button></div>
                   <div class="meet-time-row">
                     <select class="mini-select field-meettime-h">${hourOptions()}</select>
                     <span style="font-weight:900;">:</span>
@@ -731,14 +832,9 @@
                   </div>
                 </div>
                 <div class="field">
-                  <div class="label-value"><span class="label">交通費_種類:</span></div>
-                  <select class="edit-input field-transporttype">
-                    <option value="">未選択</option><option value="一律">一律</option><option value="実費">実費</option>
-                  </select>
-                </div>
-                <div class="field">
-                  <div class="label-value"><span class="label">アピアランス:</span></div>
-                  <input class="edit-input field-appearance" type="text" placeholder="例：黒スーツ・スニーカー可" autocomplete="off">
+                  <div class="label-value"><span class="label">アピアランス:</span>
+                    <button class="copy-value" type="button" data-common-copy="appearance"><span class="copy-icon">⧉</span><span class="copy-text">—</span></button></div>
+                  <input class="edit-input field-appearance" type="text" placeholder="入力なし＝共通値" autocomplete="off">
                 </div>`;
     }
     function getMeetTime(block){
@@ -753,7 +849,7 @@
       let acc=document.querySelector(`.accordion[data-position="${pos}"]`);
       if(acc) return acc;
       acc=document.createElement('section');
-      acc.className='accordion open';
+      acc.className='accordion'; // 手動追加でも初期=閉。addManualBlockで明示open
       acc.dataset.position=pos;
       acc.innerHTML=`<button class="accordion-header" type="button"><span class="position-info"><span class="position-name">${escapeHtml(pos)}</span><span class="position-count">手動追加</span></span><span class="chevron">⌄</span></button><div class="accordion-body"></div>`;
       document.getElementById('positionAccordions').appendChild(acc);
@@ -796,6 +892,7 @@
               <div class="label-value"><span class="label">交通費:</span></div>
               <input class="edit-input field-transport" type="text" inputmode="numeric" placeholder="例：2000">
             </div>
+            ${transportTypeHtml()}
             <div class="field">
               <div class="label-value"><span class="label">食費:</span></div>
               <input class="edit-input field-meal" type="text" inputmode="numeric" placeholder="例：800">
@@ -815,8 +912,53 @@
       const idx='m'+(++manualSeq);
       acc.classList.add('open');
       acc.querySelector('.accordion-body').insertAdjacentHTML('beforeend', manualBlockHtml(pos, idx));
+      // 追加したブロックだけ開く（既存はそのまま）
+      const added=acc.querySelector(`.date-block[data-idx="${idx}"]`);
+      if(added) added.classList.add('open');
       bindEvents();
-      showMessage('ブロック追加（保存で確定）',false);
+      // ⑥ 自動スクロールしない（左原文を見ながら入力できるよう）
+      showMessage(`${pos}ブロック追加（保存で確定）`,false);
+    }
+
+    // ===== ⑤ 共通追加情報（手動追加情報カード） =====
+    function toggleCommonCard(){ document.getElementById('commonCard').classList.toggle('open'); }
+    function toggleExtrasCard(){ document.getElementById('extrasCard').classList.toggle('open'); }
+
+    function getCommonExtras(){
+      const h=document.getElementById('commonMeetTimeH').value;
+      const m=document.getElementById('commonMeetTimeM').value;
+      return {
+        venue: document.getElementById('commonVenue').value.trim(),
+        meetPlace: document.getElementById('commonMeetPlace').value.trim(),
+        meetTime: h!=='' ? `${h}:${m||'00'}` : '',
+        appearance: document.getElementById('commonAppearance').value.trim(),
+        remark: document.getElementById('commonRemark').value.trim(),
+        transportType: '' // 交通費種類は共通値を持たない（ポジション側のみ）
+      };
+    }
+    function refreshCommonCopyButtons(){
+      const e=getCommonExtras();
+      const map={venue:e.venue,meetPlace:e.meetPlace,meetTime:e.meetTime,appearance:e.appearance};
+      document.querySelectorAll('[data-common-copy]').forEach(btn=>{
+        const key=btn.dataset.commonCopy;
+        const v=map[key]||'';
+        btn.dataset.copy=v;
+        btn.querySelector('.copy-text').textContent = v || '—';
+      });
+    }
+    // 入力時にライブ反映
+    ['commonVenue','commonMeetPlace','commonAppearance','commonRemark'].forEach(id=>{
+      document.addEventListener('input', (e)=>{ if(e.target&&e.target.id===id) refreshCommonCopyButtons(); });
+    });
+    document.addEventListener('change', (e)=>{
+      if(e.target&&(e.target.id==='commonMeetTimeH'||e.target.id==='commonMeetTimeM')) refreshCommonCopyButtons();
+    });
+
+    function populateCommonHourMin(){
+      const sh=document.getElementById('commonMeetTimeH');
+      const sm=document.getElementById('commonMeetTimeM');
+      if(sh && !sh.innerHTML) sh.innerHTML=hourOptions();
+      if(sm && !sm.innerHTML) sm.innerHTML=minOptions();
     }
 
     // ===== ⑦ 追加原文 =====
@@ -847,7 +989,7 @@
       }catch(e){ showLoading(false); showMessage('エラー：'+e.message,true); }
     }
 
-    window.onload=()=>{ setupModals(); initLiff(); };
+    window.onload=()=>{ setupModals(); populateCommonHourMin(); initLiff(); };
   </script>
 </body>
 </html>
