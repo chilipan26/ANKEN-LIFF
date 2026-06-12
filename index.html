@@ -730,6 +730,7 @@
           const transIn=block.querySelector('.field-transport').value.trim();
           const mealIn=block.querySelector('.field-meal').value.trim();
           updated.positions[pos].push({
+            rowIndex: block.dataset.rowindex,
             date: dateVal,
             workTime: wtVal,
             unitPrice: priceIn!==''?numClean(priceIn):numClean(cv[0]?.dataset.copy),
