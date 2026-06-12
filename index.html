@@ -633,8 +633,27 @@
     function getBlockByUid(uid){ const [pos,idx]=uid.split('__'); return document.querySelector(`.date-block[data-pos="${pos}"][data-idx="${idx}"]`); }
 
     // ===== カレンダー =====
-    let calActiveUid=null, calSelected=new Set(), calYear=2025, calMonth=5;
-    function openCalendar(uid){ calActiveUid=uid; const block=getBlockByUid(uid); calSelected=new Set(parseDateArray(block.querySelector('.field-date').value)); const first=uniqueSorted([...calSelected])[0]||toKey(new Date()); const d=toDate(first); calYear=d.getFullYear(); calMonth=d.getMonth(); renderCalendar(); updateCalPreview(); document.getElementById('calendarBackdrop').classList.add('show'); }
+    let calActiveUid=null, calSelected=new Set(), calYear=new Date().getFullYear(), calMonth=5;
+    function openCalendar(uid){
+      calActiveUid=uid;
+      const block=getBlockByUid(uid);
+      const curY=new Date().getFullYear();
+      let raw=parseDateArray(block.querySelector('.field-date').value);
+      let shifted=false;
+      // 過去年の日付は今年（同月日）へ自動補正（AIが2025を吐く問題の救済）
+      raw=raw.map(k=>{ const d=toDate(k); if(d && d.getFullYear()<curY){ shifted=true; return toKey(new Date(curY, d.getMonth(), d.getDate())); } return k; });
+      calSelected=new Set(raw);
+      const first=uniqueSorted([...calSelected])[0]||toKey(new Date());
+      const d=toDate(first); calYear=d.getFullYear(); calMonth=d.getMonth();
+      renderCalendar(); updateCalPreview();
+      document.getElementById('calendarBackdrop').classList.add('show');
+      if(shifted) showMessage(`過去年だったため${curY}年に補正しました`,false);
+    }
+    // 年ピル切替：別年の選択を消して、その年だけで扱う（年跨ぎ混入を根絶）
+    function switchCalYear(y){
+      [...calSelected].forEach(k=>{ const d=toDate(k); if(d && d.getFullYear()!==y) calSelected.delete(k); });
+      calYear=y; renderCalendar(); updateCalPreview();
+    }
     function closeCalendar(){ document.getElementById('calendarBackdrop').classList.remove('show'); calActiveUid=null; calSelected=new Set(); }
     function renderCalendar(){
       // ── 年ピル（前年〜3年後の5択） ──
@@ -644,7 +663,7 @@
       yearRange.sort((a,b)=>a-b);
       document.getElementById('yearRow').innerHTML = yearRange.map(y =>
         `<button type="button" class="year-pill${y===calYear?' active':''}"
-          onclick="calYear=${y};renderCalendar();updateCalPreview();">${y}年</button>`
+          onclick="switchCalYear(${y})">${y}年</button>`
       ).join('');
       // ── 月ラベル（年はピルで表示するので月だけ） ──
       document.getElementById('monthLabel').textContent = `${calMonth+1}月`;
